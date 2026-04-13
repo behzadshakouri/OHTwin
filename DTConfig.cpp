@@ -120,6 +120,10 @@ bool DTConfig::load(QString &errorMessage)
     // --- optional fields ---
     loadModelJson = raw.value("load_model_json").toString().toStdString();
     weatherFile   = raw.value("weather_file").toString().toStdString();
+    noaaOffice    = raw.value("noaa_office").toString("LWX").toStdString();
+    noaaGridX     = raw.value("noaa_grid_x").toInt(0);
+    noaaGridY     = raw.value("noaa_grid_y").toInt(0);
+
     startDatetime = raw.value("start_datetime").toString().toStdString();
     intervalStr   = raw.value("interval").toString("1day").toStdString();
 
@@ -163,6 +167,9 @@ bool DTConfig::load(QString &errorMessage)
               << "[Config] model_snapshot_dir: " << modelSnapshotDir << "\n"
               << "[Config] interval          : " << intervalStr
               << " (" << intervalMs << " ms)\n";
+    std::cout << "[Config] noaa_office       : " << noaaOffice << "\n"
+              << "[Config] noaa_grid_x       : " << noaaGridX  << "\n"
+              << "[Config] noaa_grid_y       : " << noaaGridY  << "\n";
 
     if (!startDatetime.empty())
         std::cout << "[Config] start_datetime    : " << startDatetime << "\n";

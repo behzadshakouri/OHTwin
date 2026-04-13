@@ -35,6 +35,11 @@ public:
     std::string modelSnapshotDir;  // directory for per-interval model JSON snapshots
     std::string weatherFile;       // optional weather JSON
 
+    // --- weather / NOAA ---
+    std::string noaaOffice;        // e.g. "LWX"
+    int         noaaGridX = 0;     // NOAA grid X coordinate
+    int         noaaGridY = 0;     // NOAA grid Y coordinate
+
     // --- timing ---
     // "300s" | "4hr" | "2day"  — parsed into intervalMs for QTimer
     std::string intervalStr;

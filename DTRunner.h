@@ -7,6 +7,11 @@
 #include <QObject>
 #include <QString>
 #include <string>
+#include "noaaweatherfetcher.h"
+#include "Precipitation.h"
+
+
+class System;
 
 // ---------------------------------------------------------------------------
 // DTRunner
@@ -69,6 +74,13 @@ private:
     static QJsonObject patchSimulationWindow(const QJsonObject &state,
                                              double startSerial,
                                              double endSerial);
+
+    // Fetch NOAA precipitation and convert to CPrecipitation for the given window
+    CPrecipitation fetchPrecipitation(const QDateTime &intervalStart,
+                                      const QDateTime &intervalEnd);
+
+    // Placeholder: inject precipitation into the OHQ system
+    void injectPrecipitation(System *system, const CPrecipitation &precip);
 
     // -----------------------------------------------------------------------
     // State

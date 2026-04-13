@@ -184,7 +184,9 @@ bool DTRunner::runOnce()
 
     system->SetSilent(false);
     system->CalcAllInitialValues();
-
+    // Fetch and inject precipitation for this interval
+    CPrecipitation precip = fetchPrecipitation(intervalStart, intervalEnd);
+    injectPrecipitation(system.get(), precip);
     std::cout << "[Runner] Solving...\n";
     system->Solve();
 
@@ -343,4 +345,66 @@ QJsonObject DTRunner::patchSimulationWindow(const QJsonObject &state,
     patched["Settings"] = settings;
 
     return patched;
+}
+
+// ---------------------------------------------------------------------------
+// fetchPrecipitation
+// Fetches NOAA quantitative precipitation for [intervalStart, intervalEnd]
+// and returns a CPrecipitation object with bins in OHQ day-serial units.
+// NOAA returns mm; bins outside the interval window are excluded.
+// ---------------------------------------------------------------------------
+CPrecipitation DTRunner::fetchPrecipitation(const QDateTime &intervalStart,
+                                            const QDateTime &intervalEnd)
+{
+    CPrecipitation precip;
+
+    NOAAWeatherFetcher fetcher;
+    const QVector<WeatherData> raw = fetcher.getWeatherPrediction(
+        QString::fromStdString(m_config.noaaOffice),
+        m_config.noaaGridX,
+        m_config.noaaGridY,
+        datatype::PrecipitationAmount);
+
+    if (raw.isEmpty()) {
+        std::cerr << "[Runner] Warning: no precipitation data returned from NOAA\n";
+        return precip;
+    }
+
+    int skipped = 0;
+    for (const WeatherData &wd : raw)
+    {
+        // Only include bins that overlap with [intervalStart, intervalEnd]
+        if (wd.endTime <= intervalStart || wd.startTime >= intervalEnd) {
+            ++skipped;
+            continue;
+        }
+
+        // Clamp bin edges to the interval window
+        const QDateTime binStart = qMax(wd.startTime, intervalStart);
+        const QDateTime binEnd   = qMin(wd.endTime,   intervalEnd);
+
+        const double s = toOHQDaySerial(binStart);
+        const double e = toOHQDaySerial(binEnd);
+
+        // NOAA quantitativePrecipitation is total mm over the bin duration.
+        // CPrecipitation stores intensity * bin_width = total depth,
+        // so i = value (mm) directly — getval() divides by (e-s) internally.
+        precip.append(s, e, wd.value/1000.0);
+    }
+
+    std::cout << "[Runner] Precipitation bins loaded: " << precip.n
+              << " (skipped " << skipped << " outside window)\n";
+
+    return precip;
+}
+
+// ---------------------------------------------------------------------------
+// injectPrecipitation  (placeholder)
+// ---------------------------------------------------------------------------
+void DTRunner::injectPrecipitation(System *system, const CPrecipitation &precip)
+{
+    // TODO: wire precip into the OHQ system
+    // e.g. find the relevant block and set its precipitation time series
+    (void)system;
+    (void)precip;
 }

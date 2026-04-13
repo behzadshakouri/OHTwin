@@ -1,5 +1,5 @@
 QT -= gui
-QT += core
+QT += core network
 
 CONFIG += console
 CONFIG -= app_bundle
@@ -47,7 +47,8 @@ CONFIG(debug, debug|release) {
 SOURCES += \
     DTConfig.cpp \
     DTRunner.cpp \
-    main.cpp
+    main.cpp \
+    noaaweatherfetcher.cpp
 
 HEADERS += \
     ../../XString.h \
@@ -108,7 +109,8 @@ HEADERS += \
     ../OpenHydroQual/aquifolium/src/BTCSet.hpp \
     ../OpenHydroQual/aquifolium/include/reaction.h \
     DTConfig.h \
-    DTRunner.h
+    DTRunner.h \
+    noaaweatherfetcher.h
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
