@@ -32,3 +32,7 @@ resources/Wizard_Scripts/
 outputs/
 
 state/
+
+build/Desktop_Qt_6_8_3-Debug/
+
+viewer/build/Desktop_Qt_6_8_3-Debug/
