@@ -1,4 +1,4 @@
-QT += core gui widgets charts network
+QT += core gui widgets charts network svg svgwidgets
 CONFIG += c++17
 
 TARGET   = DrywellDTViewer

@@ -11,6 +11,7 @@
 #include <QJsonObject>
 #include <iostream>
 #include <memory>
+#include "VizRenderer.h"
 
 // ---------------------------------------------------------------------------
 // OHQ epoch: day-serial 0 = 1899-12-30 (Excel convention)
@@ -242,8 +243,27 @@ bool DTRunner::runOnce()
     ohqSystem->SavetoJson(modelSnapshotPath.toStdString(),
                        ohqSystem->addedtemplates, false, true);
 
+
+    // Save full state (all derived/expression variables) for visualization
+    const QString vizStatePath =
+        QString::fromStdString(m_config.outputDir) + "/viz_state.json";
+    ohqSystem->SaveFullStateTo(vizStatePath);
+    std::cout << "[Runner] Viz state written to: " << vizStatePath.toStdString() << "\n";
+
+
     // Load it back so we can annotate it with runner metadata
     QJsonObject savedState = readJson(modelSnapshotPath);
+
+    const QString vizJsonPath =
+        QCoreApplication::applicationDirPath() + "/viz.json";
+    const QString vizSvgPath  =
+        QString::fromStdString(m_config.outputDir) + "/viz.svg";
+    const QJsonObject fullState = readJson(vizStatePath);
+    QString vizErr;
+    if (!VizRenderer::render(vizJsonPath, fullState, vizSvgPath, vizErr))
+        std::cerr << "[Runner] VizRenderer warning: " << vizErr.toStdString() << "\n";
+    else
+        std::cout << "[Runner] viz.svg written to: " << vizSvgPath.toStdString() << "\n";
 
     // Annotate with runner bookkeeping fields (prefixed _runner_ to
     // avoid clashing with OHQ keys)

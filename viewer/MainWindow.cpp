@@ -1,5 +1,8 @@
-#include "MainWindow.h"
+#ifdef __EMSCRIPTEN__
+#include <emscripten/val.h>
+#endif
 
+#include "MainWindow.h"
 #include <QBrush>
 #include <QColor>
 #include <QCursor>
@@ -18,7 +21,10 @@
 #include <QToolTip>
 #include <QVBoxLayout>
 #include <QWidget>
-
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSplitter>
+#include <QSvgWidget>
 #include <limits>
 
 // ------------------------------------------------------------------
@@ -75,12 +81,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     topBar->setContentsMargins(14, 12, 14, 12);
     topBar->setSpacing(10);
 
-    topBar->addWidget(new QLabel("CSV URL"));
-    m_urlEdit = new QLineEdit(m_url.toString());
-    m_urlEdit->setClearButtonEnabled(true);
-    topBar->addWidget(m_urlEdit, 1);
-
-    topBar->addSpacing(4);
     topBar->addWidget(new QLabel("Refresh (s)"));
     m_intervalSpin = new QSpinBox();
     m_intervalSpin->setRange(5, 24 * 3600);
@@ -107,16 +107,35 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     m_statusLabel->setText(statusHtml("#9CA3AF", "Idle"));
     root->addWidget(m_statusLabel);
 
-    // ---- scrollable column of per-series charts ----
+    // ---- splitter: charts (left) | SVG viz (right) ----
+    // ---- splitter: charts (left) | SVG viz (right) ----
+    auto *splitter = new QSplitter(Qt::Horizontal);
+    splitter->setHandleWidth(6);
+    splitter->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    // left: scrollable charts
     auto *scroll     = new QScrollArea();
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     auto *chartsHost = new QWidget();
     m_chartsLayout   = new QVBoxLayout(chartsHost);
     m_chartsLayout->setContentsMargins(0, 0, 0, 0);
     m_chartsLayout->setSpacing(14);
     scroll->setWidget(chartsHost);
-    root->addWidget(scroll, 1);
+
+    // right: SVG panel
+    m_svgWidget = new QSvgWidget();
+    m_svgWidget->setMinimumWidth(280);
+    m_svgWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+
+    splitter->addWidget(scroll);
+    splitter->addWidget(m_svgWidget);
+
+    // Set initial sizes explicitly: 2/3 charts, 1/3 svg
+    splitter->setSizes({780, 390});
+
+    root->addWidget(splitter, 1);
 
     setCentralWidget(central);
     resize(1180, 820);
@@ -128,8 +147,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
             this, &MainWindow::onIntervalChanged);
     connect(m_lastNSpin,    QOverload<int>::of(&QSpinBox::valueChanged),
             this, &MainWindow::onLastNChanged);
-    connect(m_urlEdit,      &QLineEdit::editingFinished,
-            this, &MainWindow::onUrlChanged);
     connect(&m_loader, &CsvLoader::loaded, this, &MainWindow::onLoaded);
     connect(&m_loader, &CsvLoader::failed, this, &MainWindow::onFailed);
     connect(&m_timer,  &QTimer::timeout,   this, &MainWindow::onRefreshClicked);
@@ -137,14 +154,59 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     m_timer.setInterval(m_refreshSeconds * 1000);
     m_timer.start();
 
-    onRefreshClicked();  // initial fetch
+    m_timer.setInterval(m_refreshSeconds * 1000);
+    // Don't start timer or fetch yet — wait for config
+    loadConfig();  // <-- replaces onRefreshClicked()
+}
+
+void MainWindow::loadConfig()
+{
+    QUrl configUrl;
+
+#ifdef __EMSCRIPTEN__
+    std::string href = emscripten::val::global("window")["location"]["href"].as<std::string>();
+    QUrl pageUrl(QString::fromStdString(href));
+    configUrl = pageUrl.resolved(QUrl("config.json"));
+#else
+    configUrl = QUrl::fromLocalFile(
+        QCoreApplication::applicationDirPath() + "/config.json");
+#endif
+
+    QNetworkReply *reply = m_configNam.get(QNetworkRequest(configUrl));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        onConfigReply(reply);
+    });
+}
+
+void MainWindow::onConfigReply(QNetworkReply *reply)
+{
+    reply->deleteLater();
+    if (reply->error() == QNetworkReply::NoError) {
+        const QByteArray data = reply->readAll();
+        qDebug() << "Config raw:" << data;
+        const QJsonDocument doc = QJsonDocument::fromJson(data);
+        qDebug() << "Config parsed:" << doc.object();
+        const QString url = doc.object().value("csv_url").toString();
+        qDebug() << "CSV URL from config:" << url;
+        if (!url.isEmpty()) {
+            m_url = QUrl(url);
+        }
+        const QString svgUrl = doc.object().value("viz_state_url").toString();
+        if (!svgUrl.isEmpty())
+            m_svgUrl = QUrl(svgUrl);
+    } else {
+        qDebug() << "Config load error:" << reply->error() << reply->errorString();
+    }
+    m_timer.start();
+    onRefreshClicked();
 }
 
 void MainWindow::onRefreshClicked()
 {
     m_statusLabel->setText(statusHtml("#F59E0B",
-        QString("Fetching %1 …").arg(m_url.toString())));
+                                      QString("Fetching …")));
     m_loader.fetch(m_url);
+    fetchSvg();   // <-- add this
 }
 
 void MainWindow::onIntervalChanged(int seconds)
@@ -157,14 +219,6 @@ void MainWindow::onLastNChanged(int n)
 {
     m_lastN = n;
     display();   // re-slice + redraw without re-fetching
-}
-
-void MainWindow::onUrlChanged()
-{
-    const QString text = m_urlEdit->text().trimmed();
-    if (text.isEmpty()) return;
-    m_url = QUrl(text);
-    onRefreshClicked();
 }
 
 void MainWindow::onFailed(const QString &err)
@@ -269,7 +323,7 @@ void MainWindow::rebuildPanels(const QVector<CsvSeries> &series)
         panel.series->setName(s.name);
         panel.series->setPointsVisible(true);
 
-        QPen pen(QColor(kSeriesColors[i % kSeriesColors.size()]));
+        QPen pen{QColor(kSeriesColors[i % kSeriesColors.size()])};
         pen.setWidthF(2.2);
         pen.setCapStyle(Qt::RoundCap);
         pen.setJoinStyle(Qt::RoundJoin);
@@ -333,4 +387,20 @@ void MainWindow::updatePanels(const QVector<CsvSeries> &series)
             p.axisY->setRange(s.yMin, s.yMax);
         }
     }
+}
+
+void MainWindow::fetchSvg()
+{
+    if (m_svgUrl.isEmpty()) return;
+    QNetworkReply *reply = m_svgNam.get(QNetworkRequest(m_svgUrl));
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+        onSvgFetched(reply);
+    });
+}
+
+void MainWindow::onSvgFetched(QNetworkReply *reply)
+{
+    reply->deleteLater();
+    if (reply->error() == QNetworkReply::NoError)
+        m_svgWidget->load(reply->readAll());
 }

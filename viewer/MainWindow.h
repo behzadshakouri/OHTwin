@@ -5,14 +5,17 @@
 #include <QUrl>
 #include <QVector>
 #include "CsvLoader.h"
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+
 
 class QLineEdit;
 class QSpinBox;
 class QPushButton;
 class QLabel;
 class QVBoxLayout;
-
-// Qt 6 removed the QtCharts namespace — classes live in the global namespace.
+class QSvgWidget;
+class QSplitter;
 class QChart;
 class QChartView;
 class QLineSeries;
@@ -39,10 +42,12 @@ private slots:
     void onRefreshClicked();
     void onIntervalChanged(int seconds);
     void onLastNChanged(int n);
-    void onUrlChanged();
     void onLoaded(const QVector<CsvSeries> &series);
     void onFailed(const QString &err);
     void onSeriesHovered(const QPointF &point, bool state);
+    void onSvgFetched(QNetworkReply *reply);
+    void fetchSvg();
+
 
 private:
     void display();                                          // slice m_lastData by m_lastN and render
@@ -50,7 +55,6 @@ private:
     void updatePanels (const QVector<CsvSeries> &series);
     static void recomputeBounds(CsvSeries &s);
 
-    QLineEdit   *m_urlEdit       = nullptr;
     QSpinBox    *m_intervalSpin  = nullptr;
     QSpinBox    *m_lastNSpin     = nullptr;
     QPushButton *m_refreshBtn    = nullptr;
@@ -66,4 +70,12 @@ private:
     QUrl m_url;
     int  m_refreshSeconds = 300;   // default 5 min, editable from UI
     int  m_lastN          = 0;     // 0 = show all points
+
+    void loadConfig();
+    void onConfigReply(QNetworkReply *reply);
+    QNetworkAccessManager m_configNam;
+
+    QSvgWidget           *m_svgWidget   = nullptr;
+    QNetworkAccessManager m_svgNam;
+    QUrl                  m_svgUrl;
 };

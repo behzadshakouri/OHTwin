@@ -105,6 +105,7 @@ CONFIG(debug, debug|release) {
 SOURCES += \
     DTConfig.cpp \
     DTRunner.cpp \
+    VizRenderer.cpp \
     main.cpp \
     noaaweatherfetcher.cpp
 
@@ -168,6 +169,7 @@ HEADERS += \
     ../OpenHydroQual/aquifolium/include/reaction.h \
     DTConfig.h \
     DTRunner.h \
+    VizRenderer.h \
     noaaweatherfetcher.h
 
 # Default rules for deployment.
