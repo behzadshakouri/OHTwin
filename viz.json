@@ -1,0 +1,203 @@
+{
+    "canvas": { "width": 420, "height": 560 },
+    "components": [
+        {
+            "id": "rain",
+            "block": "dummy_catchment",
+            "label": "Rain",
+            "bind": {
+                "intensity": { "source": "rain", "property": "Intensity" }
+            },
+            "draw": [
+                {
+                    "shape": "ellipse",
+                    "cx": 0.17, "cy": 0.5, "rx": 0.06, "ry": 0.1,
+                    "fill": {"bind": "water_color"}
+                },
+                {
+                    "shape": "ellipse",
+                    "cx": 0.34, "cy": 0.5, "rx": 0.06, "ry": 0.1,
+                    "fill": {"bind": "water_color"}
+                },
+                {
+                    "shape": "ellipse",
+                    "cx": 0.51, "cy": 0.5, "rx": 0.06, "ry": 0.1,
+                    "fill": {"bind": "water_color"}
+                },
+                {
+                    "shape": "ellipse",
+                    "cx": 0.68, "cy": 0.5, "rx": 0.06, "ry": 0.1,
+                    "fill": {"bind": "water_color"}
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.15,
+                    "anchor": "middle",
+                    "value": {"bind": "label"},
+                    "font_size": 10, "font_weight": 600, "fill": "#1E293B"
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.92,
+                    "anchor": "middle",
+                    "value": {"expr": "fill_value", "format": "%.2f m/day"},
+                    "font_size": 9, "fill": "#475569"
+                }
+            ]
+        },
+        {
+            "id": "catchment1",
+            "block": "Catchment (1)",
+            "label": "Catchment",
+            "fill_max": 10.0,
+            "bind": {
+                "fill_value": { "block": "Catchment (1)", "property": "Storage" }
+            },
+            "draw": [
+                {
+                    "shape": "polygon",
+                    "points": [[0,1],[1,1],[1,0.3],[0,0.65]],
+                    "fill": "#D1FAE5",
+                    "stroke": "#94A3B8",
+                    "stroke_width": 1.5
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.4,
+                    "anchor": "middle",
+                    "value": {"bind": "label"},
+                    "font_size": 11, "font_weight": 600, "fill": "#1E293B"
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.65,
+                    "anchor": "middle",
+                    "value": {"expr": "fill_value", "format": "%.1f m³"},
+                    "font_size": 9, "fill": "#475569"
+                }
+            ]
+        },
+        {
+            "id": "pond1",
+            "block": "Pond",
+            "label": "Pond",
+            "fill_max": 500.0,
+            "bind": {
+                "fill_value": { "block": "Pond", "property": "Storage" }
+            },
+            "thresholds": [
+                { "below": 0.5, "color": "#3B82F6" },
+                { "below": 0.8, "color": "#F59E0B" },
+                { "above": 0.8, "color": "#EF4444" }
+            ],
+            "draw": [
+                {
+                    "shape": "rect",
+                    "x": 0, "y": 0, "w": 1, "h": 1,
+                    "fill": "#EFF6FF",
+                    "stroke": "#94A3B8",
+                    "stroke_width": 1.5,
+                    "rx": 8
+                },
+                {
+                    "shape": "rect",
+                    "x": 0,
+                    "y": {"expr": "1 - fill_fraction"},
+                    "w": 1,
+                    "h": {"bind": "fill_fraction"},
+                    "fill": {"bind": "water_color"},
+                    "clip": true
+                },
+                {
+                    "shape": "rect",
+                    "x": 0, "y": 0, "w": 1, "h": 1,
+                    "fill": "none",
+                    "stroke": "#94A3B8",
+                    "stroke_width": 1.5,
+                    "rx": 8
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.08,
+                    "anchor": "middle",
+                    "value": {"bind": "label"},
+                    "font_size": 11, "font_weight": 600, "fill": "#1E293B"
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.94,
+                    "anchor": "middle",
+                    "value": {"expr": "fill_value", "format": "%.1f m³"},
+                    "font_size": 10, "fill": "#1E293B"
+                }
+            ]
+        },
+        {
+            "id": "outlet",
+            "block": "fixed_head (1)",
+            "label": "Outlet",
+            "draw": [
+                {
+                    "shape": "rect",
+                    "x": 0, "y": 0, "w": 1, "h": 1,
+                    "fill": "#CBD5E1",
+                    "stroke": "#64748B",
+                    "stroke_width": 1.5
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.5,
+                    "anchor": "middle",
+                    "value": {"bind": "label"},
+                    "font_size": 11, "font_weight": 600, "fill": "#1E293B"
+                }
+            ]
+        }
+    ],
+    "connectors": [
+        {
+            "link": "Catchment (1) - Pond (1)",
+            "bind": {
+                "flow_value": {
+                    "link": "Catchment (1) - Pond (1)",
+                    "property": "flow"
+                }
+            },
+            "draw": [
+                {
+                    "shape": "line",
+                    "stroke": "#3B82F6",
+                    "stroke_width": 2
+                },
+                {
+                    "shape": "text",
+                    "value": {"expr": "flow_value", "format": "%.1f m³/d"},
+                    "font_size": 9,
+                    "fill": "#475569"
+                }
+            ]
+        },
+        {
+            "link": "Pond (1) - fixed_head (1)",
+            "bind": {
+                "flow_value": {
+                    "link": "Pond (1) - fixed_head (1)",
+                    "property": "flow"
+                }
+            },
+            "draw": [
+                {
+                    "shape": "line",
+                    "stroke": "#3B82F6",
+                    "stroke_width": 2
+                },
+                {
+                    "shape": "text",
+                    "value": {"expr": "flow_value", "format": "%.1f m³/d"},
+                    "font_size": 9,
+                    "fill": "#475569"
+                }
+            ]
+        }
+    ]
+}

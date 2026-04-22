@@ -7,7 +7,7 @@ CONFIG -= app_bundle
 CONFIG += c++14
 
 # Set to 1 to compile OHQ from source, 0 to use the shared library
-OHQ_FROM_SOURCE = 1
+OHQ_FROM_SOURCE = 0
 
 INCLUDEPATH += ../OpenHydroQual/aquifolium/include
 INCLUDEPATH += ../OpenHydroQual/aquifolium/src
