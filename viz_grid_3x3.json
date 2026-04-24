@@ -1,0 +1,96 @@
+{
+  "canvas": { "width": 340, "height": 340 },
+
+  "repeat_components": [
+    {
+      "counters": {
+        "i": { "range": [0, 2] },
+        "j": { "range": [0, 2] }
+      },
+      "template": {
+        "id":    "cell_${i}_${j}",
+        "type":  "tank",
+        "label": "S${i}${j}",
+        "block": "soil_${i}_${j}",
+
+        "x":      { "counter": "i", "range": [30, 230] },
+        "y":      { "counter": "j", "range": [30, 230] },
+        "width":  80,
+        "height": 80,
+
+        "fill_max": 100,
+
+        "bind": {
+          "fill_value": {
+            "block":    "soil_${i}_${j}",
+            "property": "Storage"
+          }
+        },
+
+        "thresholds": [
+          { "below": 0.3, "color": "#FEF3C7" },
+          { "below": 0.7, "color": "#60A5FA" },
+          { "above": 0.7, "color": "#1E40AF" }
+        ],
+
+        "draw": [
+          { "shape": "rect", "x": 0, "y": 0, "w": 1, "h": 1,
+            "rx": 6, "fill": "#F1F5F9",
+            "stroke": "#334155", "stroke_width": 1.5 },
+          { "shape": "rect", "x": 0,
+            "y": { "expr": "1 - fill_fraction" },
+            "w": 1, "h": { "bind": "fill_fraction" },
+            "fill": { "bind": "water_color" }, "clip": true },
+          { "shape": "text", "x": 0.5, "y": 0.35, "anchor": "middle",
+            "value": { "bind": "label" },
+            "font_size": 14, "font_weight": 600, "fill": "#0F172A" },
+          { "shape": "text", "x": 0.5, "y": 0.65, "anchor": "middle",
+            "value": { "expr": "fill_value", "format": "%.1f" },
+            "font_size": 11, "fill": "#334155" }
+        ]
+      }
+    }
+  ],
+
+  "repeat_connectors": [
+    {
+      "counters": {
+        "i": { "range": [0, 2] },
+        "j": { "range": [0, 1] }
+      },
+      "template": {
+        "link":   "flow_${i}_${j}_right",
+        "from":   "soil_${i}_${j}",
+        "to":     "soil_${i}_${j+1}",
+        "attach": "auto",
+        "style":  "arrow",
+        "bind": {
+          "flow_value": {
+            "link":     "flow_${i}_${j}_right",
+            "property": "Flow"
+          }
+        }
+      }
+    },
+
+    {
+      "counters": {
+        "i": { "range": [0, 1] },
+        "j": { "range": [0, 2] }
+      },
+      "template": {
+        "link":   "flow_${i}_${j}_down",
+        "from":   "soil_${i}_${j}",
+        "to":     "soil_${i+1}_${j}",
+        "attach": "auto",
+        "style":  "arrow",
+        "bind": {
+          "flow_value": {
+            "link":     "flow_${i}_${j}_down",
+            "property": "Flow"
+          }
+        }
+      }
+    }
+  ]
+}

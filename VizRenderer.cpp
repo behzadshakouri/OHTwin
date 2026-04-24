@@ -4,8 +4,10 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMap>
 #include <QTextStream>
 #include <QVector>
+#include <QtGlobal>
 #include <cmath>
 #include <limits>
 
@@ -35,19 +37,88 @@ struct Component {
     Binding intensityBinding;
     QVector<Threshold> thresholds;
     QJsonArray drawCommands;
-    // runtime
     double  fillValue    = 0.0;
     double  fillFraction = 0.0;
     QString waterColor   = "#3B82F6";
+    bool    missing      = false;
 };
 
 struct Connector {
     QString linkName;
-    QString fromBlock, toBlock;   // read from viz_state
+    QString fromBlock, toBlock;
     Binding flowBinding;
     double  flowValue = 0.0;
     QJsonArray drawCommands;
+    QString attachMode = "bottom-top";   // "auto" | "bottom-top"
+    QString style      = "arrow";        // "arrow" | "line" | "orthogonal"
 };
+
+// ============================================================
+// Forward declarations
+// ============================================================
+static double     stateVal             (const QJsonObject &state,
+                       const QString &category,
+                       const QString &name,
+                       const QString &prop);
+static bool       stateHasBlock        (const QJsonObject &state,
+                          const QString &name);
+static double     readBinding          (const QJsonObject &state,
+                          const Binding &b);
+static Binding    parseBinding         (const QJsonValue &v);
+
+static QString    resolveColor         (const Component &c);
+static double     resolveNumber        (const QJsonValue &v, const Component &c);
+static QString    resolveColorAttr     (const QJsonValue &v, const Component &c);
+static QString    resolveText          (const QJsonValue &v, const Component &c);
+
+static double     cx                   (double nx, const Component &c);
+static double     cy                   (double ny, const Component &c);
+static QString    svgFill              (const QString &v);
+static QString    svgStroke            (const QString &v, double w);
+
+static QString    executeDraw          (const QJsonObject &cmd,
+                           const Component &c,
+                           int clipId);
+static QString    executeConnectorDraw (const QJsonObject &cmd,
+                                    double x1, double y1,
+                                    double x2, double y2,
+                                    double flowValue);
+static void       computeAttachPoints  (const Component &from,
+                                const Component &to,
+                                const QString &mode,
+                                double &x1, double &y1,
+                                double &x2, double &y2);
+static QString    emitStyledConnector  (const QString &style,
+                                   double x1, double y1,
+                                   double x2, double y2);
+
+static bool       isNumericBindingText (const QJsonObject &cmd);
+
+static QString    substituteTokens     (const QString &in,
+                                const QMap<QString,int> &counters);
+static bool       resolveCounterNumeric(const QJsonObject &o,
+                                  const QMap<QString,int> &counters,
+                                  const QMap<QString,int> &counterStarts,
+                                  const QMap<QString,int> &counterLengths,
+                                  double &outValue,
+                                  QString &err);
+static QJsonValue substituteCounters   (const QJsonValue &in,
+                                     const QMap<QString,int> &counters,
+                                     const QMap<QString,int> &counterStarts,
+                                     const QMap<QString,int> &counterLengths,
+                                     bool &ok,
+                                     QString &err);
+static QJsonArray expandRepeatArray    (const QJsonObject &vroot,
+                                    const QString &arrayName,
+                                    const QJsonArray &seed,
+                                    bool &ok,
+                                    QString &err);
+static QJsonArray expandRepeatBlocks   (const QJsonObject &vroot,
+                                     bool &ok,
+                                     QString &err);
+static QJsonArray expandRepeatConnectors(const QJsonObject &vroot,
+                                         bool &ok,
+                                         QString &err);
 
 // ============================================================
 // State accessors
@@ -60,6 +131,11 @@ static double stateVal(const QJsonObject &state,
     return state[category].toObject()[name].toObject()
     ["variables"].toObject()["variables"].toObject()
         [prop].toObject()["_val"].toDouble();
+}
+
+static bool stateHasBlock(const QJsonObject &state, const QString &name)
+{
+    return state["blocks"].toObject().contains(name);
 }
 
 static double readBinding(const QJsonObject &state, const Binding &b)
@@ -103,7 +179,7 @@ static Binding parseBinding(const QJsonValue &v)
 }
 
 // ============================================================
-// Color resolution
+// Color / value / text resolution
 // ============================================================
 static QString resolveColor(const Component &c)
 {
@@ -115,11 +191,6 @@ static QString resolveColor(const Component &c)
     return c.thresholds.last().color;
 }
 
-// ============================================================
-// Dynamic value resolution
-// ============================================================
-
-// Resolves a numeric attribute that may be literal or {"bind":...}/{"expr":...}
 static double resolveNumber(const QJsonValue &v, const Component &c)
 {
     if (v.isDouble()) return v.toDouble();
@@ -130,22 +201,16 @@ static double resolveNumber(const QJsonValue &v, const Component &c)
         const QString name = o["bind"].toString();
         if (name == "fill_fraction") return c.fillFraction;
         if (name == "fill_value")    return c.fillValue;
-        if (name == "intensity")     return c.fillFraction; // mapped same
+        if (name == "intensity")     return c.fillFraction;
         return 0.0;
     }
 
     if (o.contains("expr")) {
-        // Minimal expression evaluator: supports +, -, *, /
-        // and the tokens: fill_fraction, fill_value, intensity
         QString expr = o["expr"].toString();
         expr.replace("fill_fraction", QString::number(c.fillFraction));
         expr.replace("fill_value",    QString::number(c.fillValue));
         expr.replace("intensity",     QString::number(c.fillFraction));
 
-        // Tokenise and evaluate left-to-right (no precedence needed for simple exprs)
-        // Split on operators while keeping them
-        // Simple recursive descent for +/- at top level, */ below
-        // For now: handle "A op B" single-operation expressions
         for (const QChar op : {'+', '-', '*', '/'}) {
             const int idx = expr.indexOf(op);
             if (idx > 0) {
@@ -162,7 +227,6 @@ static double resolveNumber(const QJsonValue &v, const Component &c)
     return 0.0;
 }
 
-// Resolves a color attribute (string literal or {"bind":"water_color"})
 static QString resolveColorAttr(const QJsonValue &v, const Component &c)
 {
     if (v.isString()) return v.toString();
@@ -173,7 +237,6 @@ static QString resolveColorAttr(const QJsonValue &v, const Component &c)
     return "#000000";
 }
 
-// Resolves a text value ({"bind":"label"} or {"expr":..., "format":...})
 static QString resolveText(const QJsonValue &v, const Component &c)
 {
     if (v.isString()) return v.toString();
@@ -182,15 +245,14 @@ static QString resolveText(const QJsonValue &v, const Component &c)
 
     if (o.contains("bind")) {
         const QString name = o["bind"].toString();
-        if (name == "label")      return c.label;
-        if (name == "fill_value") return QString::number(c.fillValue);
+        if (name == "label")         return c.label;
+        if (name == "fill_value")    return QString::number(c.fillValue);
         if (name == "fill_fraction") return QString::number(c.fillFraction);
     }
 
     if (o.contains("expr")) {
         const double val = resolveNumber(v, c);
         const QString fmt = o.value("format").toString("%.2f");
-        // Apply format string
         char buf[64];
         std::snprintf(buf, sizeof(buf), fmt.toStdString().c_str(), val);
         return QString::fromLocal8Bit(buf);
@@ -199,28 +261,23 @@ static QString resolveText(const QJsonValue &v, const Component &c)
 }
 
 // ============================================================
-// Coordinate helpers: normalize [0..1] → canvas pixels
+// Coordinate / SVG helpers
 // ============================================================
 static double cx(double nx, const Component &c) { return c.x + nx * c.w; }
 static double cy(double ny, const Component &c) { return c.y + ny * c.h; }
 
-// ============================================================
-// SVG attribute helpers
-// ============================================================
 static QString svgFill  (const QString &v) { return QString("fill='%1'").arg(v); }
 static QString svgStroke(const QString &v, double w) {
     return QString("stroke='%1' stroke-width='%2'").arg(v).arg(w);
 }
 
 // ============================================================
-// Draw command executor — emits SVG for one draw entry
+// Draw command executor
 // ============================================================
 static QString executeDraw(const QJsonObject &cmd, const Component &c,
                            int clipId)
 {
     const QString shape = cmd["shape"].toString();
-
-    // -- shared optional clip reference --
     const bool useClip = cmd["clip"].toBool(false);
     const QString clipAttr = useClip
                                  ? QString("clip-path='url(#comp_clip_%1)'").arg(clipId) : "";
@@ -254,8 +311,7 @@ static QString executeDraw(const QJsonObject &cmd, const Component &c,
         const QString stroke = resolveColorAttr(cmd.value("stroke"), c);
         const double  sw     = cmd["stroke_width"].toDouble(1.0);
 
-        return QString("<ellipse cx='%1' cy='%2' rx='%3' ry='%4' "
-                       "%5 %6 %7/>\n")
+        return QString("<ellipse cx='%1' cy='%2' rx='%3' ry='%4' %5 %6 %7/>\n")
             .arg(ecx).arg(ecy).arg(rx).arg(ry)
             .arg(svgFill(fill))
             .arg(stroke.isEmpty() ? "stroke='none'" : svgStroke(stroke, sw))
@@ -294,19 +350,14 @@ static QString executeDraw(const QJsonObject &cmd, const Component &c,
         const QString dashAttr = dash.isEmpty() ? ""
                                                 : QString("stroke-dasharray='%1'").arg(dash);
 
-        return QString("<line x1='%1' y1='%2' x2='%3' y2='%4' "
-                       "%5 %6/>\n")
+        return QString("<line x1='%1' y1='%2' x2='%3' y2='%4' %5 %6/>\n")
             .arg(x1).arg(y1).arg(x2).arg(y2)
             .arg(svgStroke(stroke, sw))
             .arg(dashAttr);
     }
 
     if (shape == "path") {
-        // Path d-string: replace normalized coord tokens if needed
-        // For now treat as literal SVG path (author uses canvas coords)
         QString d = cmd["d"].toString();
-        // Replace normalized point tokens: "nx,ny" → actual pixels
-        // Simple approach: author writes literal canvas coords in path
         const QString fill   = resolveColorAttr(cmd["fill"],   c);
         const QString stroke = resolveColorAttr(cmd.value("stroke"), c);
         const double  sw     = cmd["stroke_width"].toDouble(1.0);
@@ -334,11 +385,11 @@ static QString executeDraw(const QJsonObject &cmd, const Component &c,
             .arg(fs).arg(fw).arg(fill).arg(val);
     }
 
-    return {};  // unknown shape — skip
+    return {};
 }
 
 // ============================================================
-// Connector SVG — line from source block bottom to dest block top
+// Connector SVG
 // ============================================================
 static QString executeConnectorDraw(const QJsonObject &cmd,
                                     double x1, double y1,
@@ -382,6 +433,377 @@ static QString executeConnectorDraw(const QJsonObject &cmd,
 }
 
 // ============================================================
+// Connector geometry & styled emitters
+// ============================================================
+
+// Compute where a connector attaches to its source and target components.
+//
+// mode = "bottom-top" (default/legacy):
+//   Always use source bottom-center -> target top-center. Matches the
+//   original convention for top-to-bottom process flows.
+//
+// mode = "auto":
+//   Pick the pair of facing edges based on target's position relative
+//   to source. Determines the dominant axis (horizontal vs. vertical
+//   delta between centers) and attaches to the facing edges on that
+//   axis. Works naturally for grids in any orientation.
+static void computeAttachPoints(const Component &from,
+                                const Component &to,
+                                const QString &mode,
+                                double &x1, double &y1,
+                                double &x2, double &y2)
+{
+    if (mode == "auto") {
+        const double fcx = from.x + from.w / 2;
+        const double fcy = from.y + from.h / 2;
+        const double tcx = to.x   + to.w   / 2;
+        const double tcy = to.y   + to.h   / 2;
+        const double dx  = tcx - fcx;
+        const double dy  = tcy - fcy;
+
+        if (qAbs(dx) >= qAbs(dy)) {
+            // Horizontal dominant: attach to left/right edges.
+            y1 = fcy;
+            y2 = tcy;
+            if (dx >= 0) { x1 = from.x + from.w; x2 = to.x; }
+            else         { x1 = from.x;          x2 = to.x + to.w; }
+        } else {
+            // Vertical dominant: attach to top/bottom edges.
+            x1 = fcx;
+            x2 = tcx;
+            if (dy >= 0) { y1 = from.y + from.h; y2 = to.y; }
+            else         { y1 = from.y;          y2 = to.y + to.h; }
+        }
+        return;
+    }
+
+    // Default: "bottom-top"
+    x1 = from.x + from.w / 2;
+    y1 = from.y + from.h;
+    x2 = to.x   + to.w   / 2;
+    y2 = to.y;
+}
+
+// Emit SVG for a styled connector shorthand (when the viz spec uses
+// the `style` field instead of an explicit `draw` array).
+//   "arrow"      — straight line with arrowhead marker
+//   "line"       — straight line, no arrowhead
+//   "orthogonal" — L-shaped path with arrowhead, horizontal-then-vertical
+static QString emitStyledConnector(const QString &style,
+                                   double x1, double y1,
+                                   double x2, double y2)
+{
+    if (style == "line") {
+        return QString("<line x1='%1' y1='%2' x2='%3' y2='%4' "
+                       "stroke='#3B82F6' stroke-width='2'/>\n")
+            .arg(x1).arg(y1).arg(x2).arg(y2);
+    }
+
+    if (style == "orthogonal") {
+        // Simple L-path: go horizontal first, then vertical.
+        // Works cleanly for grid-style layouts in any direction.
+        return QString("<path d='M %1 %2 L %3 %2 L %3 %4' "
+                       "fill='none' stroke='#3B82F6' stroke-width='2' "
+                       "marker-end='url(#arrowhead)'/>\n")
+            .arg(x1).arg(y1).arg(x2).arg(y2);
+    }
+
+    // Default: "arrow"
+    return QString("<line x1='%1' y1='%2' x2='%3' y2='%4' "
+                   "stroke='#3B82F6' stroke-width='2' "
+                   "marker-end='url(#arrowhead)'/>\n")
+        .arg(x1).arg(y1).arg(x2).arg(y2);
+}
+
+// ============================================================
+// Missing-component classification
+// ============================================================
+static bool isNumericBindingText(const QJsonObject &cmd)
+{
+    if (cmd["shape"].toString() != "text") return false;
+    const QJsonValue v = cmd["value"];
+    if (!v.isObject()) return false;
+    const QJsonObject vo = v.toObject();
+    if (vo.contains("expr")) return true;
+    const QString b = vo["bind"].toString();
+    return b == "fill_value" || b == "fill_fraction" || b == "intensity";
+}
+
+// ============================================================
+// Phase 1+2: repeat-block expansion
+// ============================================================
+
+// Substitute ${name}, ${name+N}, and ${name-N} tokens in a string
+// using the provided counter values. N must be a non-negative integer
+// with no whitespace. Unknown counter names are left intact.
+//
+// Out-of-iteration arithmetic is allowed: `${j+1}` with j=2 emits "3".
+// Whether the resulting reference resolves is checked at render time
+// via the missing-block path.
+static QString substituteTokens(const QString &in,
+                                const QMap<QString,int> &counters)
+{
+    QString out;
+    out.reserve(in.size());
+
+    int i = 0;
+    const int n = in.size();
+    while (i < n) {
+        if (i + 1 >= n || in[i] != '$' || in[i+1] != '{') {
+            out.append(in[i]);
+            ++i;
+            continue;
+        }
+
+        const int close = in.indexOf('}', i + 2);
+        if (close < 0) {
+            out.append(in[i]);
+            ++i;
+            continue;
+        }
+
+        const QString body = in.mid(i + 2, close - (i + 2));
+
+        int opPos = -1;
+        QChar opChar;
+        for (int k = 0; k < body.size(); ++k) {
+            if (body[k] == '+' || body[k] == '-') {
+                opPos = k;
+                opChar = body[k];
+                break;
+            }
+        }
+
+        QString name;
+        int     offset = 0;
+        bool    parsedOk = true;
+
+        if (opPos < 0) {
+            name = body;
+        } else {
+            name = body.left(opPos);
+            bool convOk = false;
+            const int N = body.mid(opPos + 1).toInt(&convOk);
+            if (!convOk || N < 0) parsedOk = false;
+            else offset = (opChar == '+') ? N : -N;
+        }
+
+        if (!parsedOk || !counters.contains(name)) {
+            out.append(in.mid(i, close - i + 1));
+            i = close + 1;
+            continue;
+        }
+
+        out.append(QString::number(counters[name] + offset));
+        i = close + 1;
+    }
+
+    return out;
+}
+
+static bool resolveCounterNumeric(const QJsonObject &o,
+                                  const QMap<QString,int> &counters,
+                                  const QMap<QString,int> &counterStarts,
+                                  const QMap<QString,int> &counterLengths,
+                                  double &outValue,
+                                  QString &err)
+{
+    const QString name = o["counter"].toString();
+    if (!counters.contains(name)) {
+        err = "Unknown counter reference: " + name;
+        return false;
+    }
+    // i is the zero-based iteration index within the counter's declared
+    // range, NOT the raw counter value. This keeps `range` semantics
+    // ("first at a, last at b") invariant under shifts of the declared
+    // start, e.g. [0,2] and [1,3] both produce first=a, last=b.
+    const int raw   = counters[name];
+    const int start = counterStarts.value(name, 0);
+    const int i     = raw - start;
+    const int n     = counterLengths.value(name, 1);
+
+    if (o.contains("step")) {
+        const double step   = o["step"].toDouble();
+        const double offset = o["offset"].toDouble(0.0);
+        outValue = i * step + offset;
+        return true;
+    }
+
+    if (o.contains("range")) {
+        const QJsonArray r = o["range"].toArray();
+        if (r.size() != 2) {
+            err = "Counter 'range' must have exactly two numbers";
+            return false;
+        }
+        const double a = r[0].toDouble();
+        const double b = r[1].toDouble();
+        outValue = (n <= 1) ? a : a + i * (b - a) / (n - 1);
+        return true;
+    }
+
+    err = "Counter object needs 'step' or 'range'";
+    return false;
+}
+
+static QJsonValue substituteCounters(const QJsonValue &in,
+                                     const QMap<QString,int> &counters,
+                                     const QMap<QString,int> &counterStarts,
+                                     const QMap<QString,int> &counterLengths,
+                                     bool &ok,
+                                     QString &err)
+{
+    if (!ok) return in;
+
+    if (in.isString()) {
+        return QJsonValue(substituteTokens(in.toString(), counters));
+    }
+
+    if (in.isObject()) {
+        const QJsonObject o = in.toObject();
+        if (o.contains("counter")) {
+            double v = 0.0;
+            if (!resolveCounterNumeric(o, counters, counterStarts,
+                                       counterLengths, v, err)) {
+                ok = false;
+                return in;
+            }
+            return QJsonValue(v);
+        }
+        QJsonObject out;
+        for (auto it = o.constBegin(); it != o.constEnd(); ++it) {
+            out.insert(it.key(),
+                       substituteCounters(it.value(), counters, counterStarts,
+                                          counterLengths, ok, err));
+        }
+        return out;
+    }
+
+    if (in.isArray()) {
+        const QJsonArray a = in.toArray();
+        QJsonArray out;
+        for (const auto &v : a) {
+            out.append(substituteCounters(v, counters, counterStarts,
+                                          counterLengths, ok, err));
+        }
+        return out;
+    }
+
+    return in;
+}
+
+// Shared Cartesian-product expansion driver, used for both components
+// and connectors. Reads vroot[arrayName] as an array of repeat blocks,
+// iterates each block's counter product, and appends each substituted
+// template to `seed`. Returns the merged array.
+static QJsonArray expandRepeatArray(const QJsonObject &vroot,
+                                    const QString &arrayName,
+                                    const QJsonArray &seed,
+                                    bool &ok,
+                                    QString &err)
+{
+    QJsonArray out = seed;
+
+    const QJsonArray repeats = vroot[arrayName].toArray();
+    for (int rIdx = 0; rIdx < repeats.size(); ++rIdx) {
+        const QJsonObject rblock = repeats[rIdx].toObject();
+        const QJsonObject ctrDefs = rblock["counters"].toObject();
+        const QJsonValue  templateVal = rblock["template"];
+
+        if (ctrDefs.isEmpty() || !templateVal.isObject()) {
+            err = QString("%1[%2]: needs non-empty 'counters' and "
+                          "an object 'template'").arg(arrayName).arg(rIdx);
+            ok = false;
+            return out;
+        }
+
+        QVector<QString>  names;
+        QVector<int>      starts;
+        QVector<int>      lengths;
+        QMap<QString,int> counterStarts;
+        QMap<QString,int> counterLengths;
+        for (auto it = ctrDefs.constBegin(); it != ctrDefs.constEnd(); ++it) {
+            const QJsonObject def = it.value().toObject();
+            const QJsonArray  r   = def["range"].toArray();
+            if (r.size() != 2) {
+                err = QString("%1[%2].counters.%3: 'range' must have "
+                              "exactly two numbers")
+                          .arg(arrayName).arg(rIdx).arg(it.key());
+                ok = false;
+                return out;
+            }
+            const int a = r[0].toInt();
+            const int b = r[1].toInt();
+            if (b < a) {
+                err = QString("%1[%2].counters.%3: range end < start")
+                .arg(arrayName).arg(rIdx).arg(it.key());
+                ok = false;
+                return out;
+            }
+            names.append(it.key());
+            starts.append(a);
+            lengths.append(b - a + 1);
+            counterStarts.insert(it.key(), a);
+            counterLengths.insert(it.key(), b - a + 1);
+        }
+
+        long long total = 1;
+        for (int len : lengths) total *= len;
+
+        QVector<int> idx(names.size(), 0);
+        for (long long k = 0; k < total; ++k) {
+            QMap<QString,int> values;
+            for (int d = 0; d < names.size(); ++d)
+                values.insert(names[d], starts[d] + idx[d]);
+
+            const QJsonValue expanded =
+                substituteCounters(templateVal, values, counterStarts,
+                                   counterLengths, ok, err);
+            if (!ok) {
+                err = QString("%1[%2]: %3")
+                .arg(arrayName).arg(rIdx).arg(err);
+                return out;
+            }
+            out.append(expanded);
+
+            for (int d = names.size() - 1; d >= 0; --d) {
+                if (++idx[d] < lengths[d]) break;
+                idx[d] = 0;
+            }
+        }
+    }
+
+    return out;
+}
+
+// components = vroot["components"] + expansions from "repeat" (legacy)
+// and/or "repeat_components".
+static QJsonArray expandRepeatBlocks(const QJsonObject &vroot,
+                                     bool &ok,
+                                     QString &err)
+{
+    QJsonArray out = vroot["components"].toArray();
+
+    if (vroot.contains("repeat")) {
+        out = expandRepeatArray(vroot, "repeat", out, ok, err);
+        if (!ok) return out;
+    }
+    if (vroot.contains("repeat_components")) {
+        out = expandRepeatArray(vroot, "repeat_components", out, ok, err);
+    }
+    return out;
+}
+
+// connectors = vroot["connectors"] + expansions from "repeat_connectors"
+static QJsonArray expandRepeatConnectors(const QJsonObject &vroot,
+                                         bool &ok,
+                                         QString &err)
+{
+    QJsonArray seed = vroot["connectors"].toArray();
+    if (!vroot.contains("repeat_connectors")) return seed;
+    return expandRepeatArray(vroot, "repeat_connectors", seed, ok, err);
+}
+
+// ============================================================
 // VizRenderer::render
 // ============================================================
 bool VizRenderer::render(const QString     &vizJsonPath,
@@ -389,7 +811,6 @@ bool VizRenderer::render(const QString     &vizJsonPath,
                          const QString     &svgOutputPath,
                          QString           &err)
 {
-    // --- load viz.json ---
     QFile vf(vizJsonPath);
     if (!vf.open(QIODevice::ReadOnly)) {
         err = "Cannot open viz.json: " + vizJsonPath;
@@ -404,12 +825,20 @@ bool VizRenderer::render(const QString     &vizJsonPath,
     const QJsonObject vroot = vdoc.object();
 
     const QJsonObject canvas = vroot["canvas"].toObject();
-    const double cw = canvas["width"].toDouble(420);
-    const double ch = canvas["height"].toDouble(560);
+    const double cx_viewport = canvas["x"].toDouble(0.0);
+    const double cy_viewport = canvas["y"].toDouble(0.0);
+    const double cw          = canvas["width"].toDouble(420);
+    const double ch          = canvas["height"].toDouble(560);
+
+    // --- expand components (hand-placed + repeat_components + legacy repeat) ---
+    bool             expandOk = true;
+    const QJsonArray allComponents =
+        expandRepeatBlocks(vroot, expandOk, err);
+    if (!expandOk) return false;
 
     // --- parse components ---
     QVector<Component> components;
-    for (const auto &cv : vroot["components"].toArray()) {
+    for (const auto &cv : allComponents) {
         const QJsonObject co = cv.toObject();
         Component c;
         c.id           = co["id"].toString();
@@ -445,19 +874,36 @@ bool VizRenderer::render(const QString     &vizJsonPath,
         components.append(c);
     }
 
+    // --- expand connectors ---
+    const QJsonArray allConnectors =
+        expandRepeatConnectors(vroot, expandOk, err);
+    if (!expandOk) return false;
+
     // --- parse connectors ---
     QVector<Connector> connectors;
     const QJsonObject stateLinks = state["links"].toObject();
-    for (const auto &cv : vroot["connectors"].toArray()) {
+    for (const auto &cv : allConnectors) {
         const QJsonObject co = cv.toObject();
         Connector cn;
-        cn.linkName    = co["link"].toString();
+        cn.linkName     = co["link"].toString();
         cn.drawCommands = co["draw"].toArray();
 
-        // read from/to from viz_state
-        const QJsonObject linkObj = stateLinks[cn.linkName].toObject();
-        cn.fromBlock = linkObj["s_Block_name"].toString();
-        cn.toBlock   = linkObj["e_Block_name"].toString();
+        // Prefer explicit from/to in the viz spec (needed for grid
+        // connectors). Fall back to state.links for hand-placed
+        // connectors that describe topology via the simulation.
+        if (co.contains("from") && co.contains("to")) {
+            cn.fromBlock = co["from"].toString();
+            cn.toBlock   = co["to"].toString();
+        } else {
+            const QJsonObject linkObj = stateLinks[cn.linkName].toObject();
+            cn.fromBlock = linkObj["s_Block_name"].toString();
+            cn.toBlock   = linkObj["e_Block_name"].toString();
+        }
+
+        // Attach and style shorthands. Both optional; defaults preserve
+        // legacy behavior (bottom-to-top geometry, straight arrow line).
+        cn.attachMode = co.value("attach").toString("bottom-top");
+        cn.style      = co.value("style").toString("arrow");
 
         const QJsonObject bind = co["bind"].toObject();
         if (bind.contains("flow_value"))
@@ -465,7 +911,7 @@ bool VizRenderer::render(const QString     &vizJsonPath,
         connectors.append(cn);
     }
 
-    // --- Option A: resolve layout from state ---
+    // --- resolve layout from state (or flag missing) ---
     {
         double xMin =  std::numeric_limits<double>::infinity();
         double yMin =  std::numeric_limits<double>::infinity();
@@ -473,17 +919,32 @@ bool VizRenderer::render(const QString     &vizJsonPath,
         double yMax = -std::numeric_limits<double>::infinity();
 
         for (auto &c : components) {
-            if (c.layoutOverride || c.blockRef.isEmpty()) continue;
-            c.x = stateVal(state, "blocks", c.blockRef, "x");
-            c.y = stateVal(state, "blocks", c.blockRef, "y");
-            c.w = stateVal(state, "blocks", c.blockRef, "_width");
-            c.h = stateVal(state, "blocks", c.blockRef, "_height");
-            if (c.w <= 0) c.w = 100;
-            if (c.h <= 0) c.h = 100;
-            xMin = qMin(xMin, c.x);
-            yMin = qMin(yMin, c.y);
-            xMax = qMax(xMax, c.x + c.w);
-            yMax = qMax(yMax, c.y + c.h);
+            const bool hasBlock = !c.blockRef.isEmpty()
+            && stateHasBlock(state, c.blockRef);
+
+            if (!hasBlock && !c.blockRef.isEmpty()) {
+                c.missing = true;
+                qWarning("VizRenderer: block '%s' referenced by component "
+                         "'%s' not found in state",
+                         qPrintable(c.blockRef), qPrintable(c.id));
+            }
+
+            if (c.layoutOverride) continue;
+
+            if (hasBlock) {
+                c.x = stateVal(state, "blocks", c.blockRef, "x");
+                c.y = stateVal(state, "blocks", c.blockRef, "y");
+                c.w = stateVal(state, "blocks", c.blockRef, "_width");
+                c.h = stateVal(state, "blocks", c.blockRef, "_height");
+                if (c.w <= 0) c.w = 100;
+                if (c.h <= 0) c.h = 100;
+                xMin = qMin(xMin, c.x);
+                yMin = qMin(yMin, c.y);
+                xMax = qMax(xMax, c.x + c.w);
+                yMax = qMax(yMax, c.y + c.h);
+            } else {
+                c.x = 10; c.y = 10; c.w = 80; c.h = 80;
+            }
         }
 
         if (xMax > xMin && yMax > yMin) {
@@ -492,7 +953,7 @@ bool VizRenderer::render(const QString     &vizJsonPath,
             const double scaleY = (ch - 2*pad) / (yMax - yMin);
             const double scale  = qMin(scaleX, scaleY);
             for (auto &c : components) {
-                if (c.layoutOverride) continue;
+                if (c.layoutOverride || c.missing) continue;
                 c.x = pad + (c.x - xMin) * scale;
                 c.y = pad + (c.y - yMin) * scale;
                 c.w = c.w * scale;
@@ -503,6 +964,12 @@ bool VizRenderer::render(const QString     &vizJsonPath,
 
     // --- resolve bindings ---
     for (auto &c : components) {
+        if (c.missing) {
+            c.fillValue    = 0.0;
+            c.fillFraction = 0.0;
+            c.waterColor   = "#E5E7EB";
+            continue;
+        }
         c.fillValue    = readBinding(state, c.fillBinding);
         c.fillFraction = (c.fillMax > 0)
                              ? qBound(0.0, c.fillValue / c.fillMax, 1.0)
@@ -513,13 +980,17 @@ bool VizRenderer::render(const QString     &vizJsonPath,
         cn.flowValue = readBinding(state, cn.flowBinding);
 
     // --- generate SVG ---
+    // Canvas x/y define the viewport's origin in *content* coordinates.
+    // The rendered SVG is sized to (width, height) and its viewBox
+    // starts at (x, y), so authored coordinates keep their absolute
+    // values and SVG does the viewport translation. Default x,y = 0
+    // preserves historical behavior.
     QString svg;
     svg += QString("<?xml version='1.0' encoding='UTF-8'?>\n"
                    "<svg xmlns='http://www.w3.org/2000/svg' "
-                   "width='%1' height='%2' viewBox='0 0 %1 %2'>\n")
-               .arg(cw).arg(ch);
+                   "width='%1' height='%2' viewBox='%3 %4 %1 %2'>\n")
+               .arg(cw).arg(ch).arg(cx_viewport).arg(cy_viewport);
 
-    // defs: arrowhead + per-component clip paths
     svg += "<defs>\n";
     svg += "  <marker id='arrowhead' markerWidth='8' markerHeight='6' "
            "refX='8' refY='3' orient='auto'>\n"
@@ -534,30 +1005,58 @@ bool VizRenderer::render(const QString     &vizJsonPath,
     }
     svg += "</defs>\n";
 
-    // background
-    svg += QString("<rect width='%1' height='%2' fill='#F8FAFC'/>\n")
-               .arg(cw).arg(ch);
+    svg += QString("<rect x='%1' y='%2' width='%3' height='%4' "
+                   "fill='#F8FAFC'/>\n")
+               .arg(cx_viewport).arg(cy_viewport).arg(cw).arg(ch);
 
-    // connectors first (drawn behind components)
+    // connectors (behind components). Drawn whenever both endpoints
+    // exist as components in the viz spec. Attach geometry and visual
+    // style are controlled by the connector's `attach` and `style`
+    // fields; defaults preserve legacy bottom-to-top arrow behavior.
     for (const auto &cn : connectors) {
-        // find from/to component positions by matching blockRef
-        double x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+        const Component *from = nullptr;
+        const Component *to   = nullptr;
         for (const auto &c : components) {
-            if (c.blockRef == cn.fromBlock)
-            { x1 = c.x + c.w/2; y1 = c.y + c.h; }
-            if (c.blockRef == cn.toBlock)
-            { x2 = c.x + c.w/2; y2 = c.y; }
+            if (c.blockRef == cn.fromBlock) from = &c;
+            if (c.blockRef == cn.toBlock)   to   = &c;
         }
-        for (const auto &cmd : cn.drawCommands)
-            svg += executeConnectorDraw(cmd.toObject(),
-                                        x1, y1, x2, y2, cn.flowValue);
+
+        if (!from || !to) {
+            qWarning("VizRenderer: connector '%s' skipped "
+                     "(from='%s' %s, to='%s' %s)",
+                     qPrintable(cn.linkName),
+                     qPrintable(cn.fromBlock), from ? "ok" : "not in spec",
+                     qPrintable(cn.toBlock),   to   ? "ok" : "not in spec");
+            continue;
+        }
+
+        double x1, y1, x2, y2;
+        computeAttachPoints(*from, *to, cn.attachMode, x1, y1, x2, y2);
+
+        const bool liveBoth = !from->missing && !to->missing;
+
+        if (!cn.drawCommands.isEmpty()) {
+            // Author-specified draw commands take precedence. Skip
+            // numeric text when data isn't live, same as before.
+            for (const auto &cmd : cn.drawCommands) {
+                const QJsonObject co = cmd.toObject();
+                if (!liveBoth && co["shape"].toString() == "text") continue;
+                svg += executeConnectorDraw(co, x1, y1, x2, y2, cn.flowValue);
+            }
+        } else {
+            // Use the `style` shorthand.
+            svg += emitStyledConnector(cn.style, x1, y1, x2, y2);
+        }
     }
 
     // components
     for (int i = 0; i < components.size(); ++i) {
         const auto &c = components[i];
-        for (const auto &cmd : c.drawCommands)
-            svg += executeDraw(cmd.toObject(), c, i);
+        for (const auto &cmd : c.drawCommands) {
+            const QJsonObject co = cmd.toObject();
+            if (c.missing && isNumericBindingText(co)) continue;
+            svg += executeDraw(co, c, i);
+        }
     }
 
     svg += "</svg>\n";

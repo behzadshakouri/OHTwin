@@ -452,7 +452,8 @@ CPrecipitation DTRunner::fetchPrecipitation(const QDateTime &intervalStart,
 // ---------------------------------------------------------------------------
 void DTRunner::injectPrecipitation(System *system, const CPrecipitation &precip)
 {
-    system->source("rain")->Variable("timeseries")->SetTimeSeries(precip);
+    if (system->source("rain"))
+        system->source("rain")->Variable("timeseries")->SetTimeSeries(precip);
     (void)system;
     (void)precip;
 }
