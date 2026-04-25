@@ -92,8 +92,8 @@ cat > /tmp/drywelldt_runner_config.json << 'EOF'
     "noaa_office":        "LWX",
     "noaa_grid_x":        96,
     "noaa_grid_y":        70,
-    "interval":           "7day",
-    "forecast_horizon":   "7day",
+    "interval":           "1day",
+    "forecast_horizon":   "6day",
     "start_datetime":     "",
     "state_variables": [
         {
