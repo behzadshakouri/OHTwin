@@ -66,3 +66,5 @@ libs/debug/
 libs/release/
 
 build/Desktop_Qt_6_8_3-Release/
+
+viewer/build/debug/
