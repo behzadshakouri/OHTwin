@@ -1,0 +1,99 @@
+{
+  "canvas": { "x": 0, "y": 0, "width": 420, "height": 360 },
+
+  "components": [
+    {
+      "id": "title",
+      "label": "Soil Array",
+      "x": 130,
+      "y": 20,
+      "width": 160,
+      "height": 36,
+      "draw": [
+        { "shape": "text", "x": 0.5, "y": 0.6, "anchor": "middle",
+          "value": { "bind": "label" }, "font_size": 18,
+          "font_weight": 700, "fill": "#0F172A" }
+      ]
+    }
+  ],
+
+  "repeat_components": [
+    {
+      "counters": {
+        "i": { "range": [1, 3] },
+        "j": { "range": [1, 3] }
+      },
+      "template": {
+        "id": "soil_${i}_${j}",
+        "type": "soil",
+        "label": "S${i}:${j}",
+        "block": "Soil(${i}:${j})",
+        "x": { "counter": "i", "range": [80, 260] },
+        "y": { "counter": "j", "range": [90, 250] },
+        "width": 75,
+        "height": 60,
+        "fill_max": 1.0,
+        "bind": {
+          "fill_value": { "block": "Soil(${i}:${j})", "property": "theta" }
+        },
+        "thresholds": [
+          { "below": 0.15, "color": "#FEF3C7" },
+          { "below": 0.30, "color": "#93C5FD" },
+          { "above": 0.30, "color": "#1D4ED8" }
+        ],
+        "draw": [
+          { "shape": "rect", "x": 0, "y": 0, "w": 1, "h": 1,
+            "rx": 5, "fill": { "bind": "water_color" },
+            "stroke": "#334155", "stroke_width": 1.2 },
+          { "shape": "text", "x": 0.5, "y": 0.38, "anchor": "middle",
+            "value": { "bind": "label" }, "font_size": 12,
+            "font_weight": 700, "fill": "#0F172A" },
+          { "shape": "text", "x": 0.5, "y": 0.68, "anchor": "middle",
+            "value": { "expr": "fill_value", "format": "θ %.2f" },
+            "font_size": 10, "fill": "#0F172A" }
+        ]
+      }
+    }
+  ],
+
+  "repeat_connectors": [
+    {
+      "counters": {
+        "i": { "range": [1, 3] },
+        "j": { "range": [1, 2] }
+      },
+      "template": {
+        "link": "soil_to_soil_H_link(${i}:${j})-(${i}:${j+1})",
+        "from": "Soil(${i}:${j})",
+        "to": "Soil(${i}:${j+1})",
+        "attach": "auto",
+        "style": "line",
+        "bind": {
+          "flow_value": {
+            "link": "soil_to_soil_H_link(${i}:${j})-(${i}:${j+1})",
+            "property": "flow"
+          }
+        }
+      }
+    },
+    {
+      "counters": {
+        "i": { "range": [1, 2] },
+        "j": { "range": [1, 3] }
+      },
+      "template": {
+        "link": "soil_to_soil_H_link(${i}:${j})-(${i+1}:${j})",
+        "from": "Soil(${i}:${j})",
+        "to": "Soil(${i+1}:${j})",
+        "attach": "auto",
+        "style": "line",
+        "bind": {
+          "flow_value": {
+            "link": "soil_to_soil_H_link(${i}:${j})-(${i+1}:${j})",
+            "property": "flow"
+          }
+        }
+      }
+    }
+  ]
+}

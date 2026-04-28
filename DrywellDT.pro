@@ -6,6 +6,7 @@ CONFIG -= app_bundle
 
 CONFIG += c++14
 
+
 # ============================================================
 # Host-config (enable ONE only)
 # Default here: PowerEdge
@@ -29,12 +30,17 @@ DEFINES += PowerEdge
 #DEFINES += WSL
 
 # ============================================================
-# Active DT model-config (enable ONE only)
-# Options: DT_MODEL_VN, DT_MODEL_DRYWELL, DT_MODEL_HQ, DT_MODEL_R
-# Default here: VN drywell
+# Model-config (enable ONE only)
+# These DEFINES drive DTConfig::compiledModelName().
 # ============================================================
 CONFIG  += DT_MODEL_VN
 DEFINES += DT_MODEL_VN
+
+#CONFIG  += DT_MODEL_SOIL_ARRAY
+#DEFINES += DT_MODEL_SOIL_ARRAY
+
+#CONFIG  += DT_MODEL_POND_CATCHMENT
+#DEFINES += DT_MODEL_POND_CATCHMENT
 
 #CONFIG  += DT_MODEL_DRYWELL
 #DEFINES += DT_MODEL_DRYWELL
@@ -46,11 +52,9 @@ DEFINES += DT_MODEL_VN
 #DEFINES += DT_MODEL_R
 
 # ============================================================
-# Host build folders (keeps build artifacts out of the source tree)
+# Build folders keyed by host + model kit
 # ============================================================
 HOST_TAG = unknown
-MODEL_TAG = unknown
-
 contains(DEFINES, Jason)      { HOST_TAG = jason }
 contains(DEFINES, PowerEdge)  { HOST_TAG = poweredge }
 contains(DEFINES, Behzad)     { HOST_TAG = behzad }
@@ -58,10 +62,13 @@ contains(DEFINES, Arash)      { HOST_TAG = arash }
 contains(DEFINES, SligoCreek) { HOST_TAG = sligocreek }
 contains(DEFINES, WSL)        { HOST_TAG = wsl }
 
-contains(DEFINES, DT_MODEL_VN)      { MODEL_TAG = vn }
-contains(DEFINES, DT_MODEL_DRYWELL) { MODEL_TAG = drywell }
-contains(DEFINES, DT_MODEL_HQ)      { MODEL_TAG = hq }
-contains(DEFINES, DT_MODEL_R)       { MODEL_TAG = r }
+MODEL_TAG = model
+contains(DEFINES, DT_MODEL_VN)             { MODEL_TAG = vn }
+contains(DEFINES, DT_MODEL_SOIL_ARRAY)     { MODEL_TAG = soilarray }
+contains(DEFINES, DT_MODEL_POND_CATCHMENT) { MODEL_TAG = pondcatchment }
+contains(DEFINES, DT_MODEL_DRYWELL)        { MODEL_TAG = drywell }
+contains(DEFINES, DT_MODEL_HQ)             { MODEL_TAG = hq }
+contains(DEFINES, DT_MODEL_R)              { MODEL_TAG = r }
 
 BUILD_TAG = $$HOST_TAG-$$MODEL_TAG
 BUILD_DIR = $$PWD/build-qmake-$$BUILD_TAG
@@ -258,12 +265,14 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 
+
 DISTFILES += \
     config.json \
-    viz_drywell.json
+    viz_drywell.json \
+    viz_soil_array.json \
+    viz_pond_catchment.json
 
-# Copy runtime config and model-specific visualization JSON next to the executable
-# after every successful link. The runner reads config.json from DESTDIR and then
-# uses config.json::viz_file to locate the selected visualization file.
-QMAKE_POST_LINK += $$QMAKE_COPY $$shell_quote($$PWD/config.json)       $$shell_quote($$DESTDIR/config.json)       $$escape_expand(\n\t)
-QMAKE_POST_LINK += $$QMAKE_COPY $$shell_quote($$PWD/viz_drywell.json) $$shell_quote($$DESTDIR/viz_drywell.json) $$escape_expand(\n\t)
+# Copy only config.json next to the executable. Visualization specs remain
+# model-specific and are selected through config.json::models::<Model>::viz_file.
+# RuntimeFiles.h also keeps this robust when running from a fresh build folder.
+QMAKE_POST_LINK += $$QMAKE_COPY $$shell_quote($$PWD/config.json) $$shell_quote($$DESTDIR/config.json) $$escape_expand(\n\t)

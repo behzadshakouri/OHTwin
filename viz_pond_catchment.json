@@ -1,0 +1,137 @@
+{
+  "canvas": { "x": 0, "y": 0, "width": 620, "height": 320 },
+
+  "components": [
+    {
+      "id": "rain",
+      "label": "Rain",
+      "block": "dummy_catchment",
+      "x": 55,
+      "y": 25,
+      "width": 95,
+      "height": 45,
+      "fill_max": 50,
+      "bind": {
+        "fill_value": { "block": "dummy_catchment", "property": "Precipitation" }
+      },
+      "thresholds": [
+        { "below": 1, "color": "#CBD5E1" },
+        { "below": 15, "color": "#60A5FA" },
+        { "above": 15, "color": "#2563EB" }
+      ],
+      "draw": [
+        { "shape": "ellipse", "cx": 0.25, "cy": 0.50, "rx": 0.13, "ry": 0.24,
+          "fill": { "bind": "water_color" }, "stroke": "#64748B", "stroke_width": 1 },
+        { "shape": "ellipse", "cx": 0.47, "cy": 0.45, "rx": 0.16, "ry": 0.28,
+          "fill": { "bind": "water_color" }, "stroke": "#64748B", "stroke_width": 1 },
+        { "shape": "ellipse", "cx": 0.68, "cy": 0.50, "rx": 0.13, "ry": 0.24,
+          "fill": { "bind": "water_color" }, "stroke": "#64748B", "stroke_width": 1 },
+        { "shape": "text", "x": 0.5, "y": 0.92, "anchor": "middle",
+          "value": { "bind": "label" }, "font_size": 10,
+          "font_weight": 700, "fill": "#1E293B" }
+      ]
+    },
+    {
+      "id": "catchment",
+      "label": "Catchment",
+      "block": "Catchment (1)",
+      "x": 60,
+      "y": 105,
+      "width": 150,
+      "height": 80,
+      "fill_max": 1,
+      "bind": {
+        "fill_value": { "block": "Catchment (1)", "property": "depth" }
+      },
+      "thresholds": [
+        { "below": 0.2, "color": "#D1FAE5" },
+        { "below": 0.7, "color": "#60A5FA" },
+        { "above": 0.7, "color": "#2563EB" }
+      ],
+      "draw": [
+        { "shape": "polygon", "points": [[0,1],[1,1],[1,0.35],[0,0.55]],
+          "fill": "#D1FAE5", "stroke": "#64748B", "stroke_width": 1.5 },
+        { "shape": "text", "x": 0.5, "y": 0.48, "anchor": "middle",
+          "value": { "bind": "label" }, "font_size": 12,
+          "font_weight": 700, "fill": "#1E293B" },
+        { "shape": "text", "x": 0.5, "y": 0.74, "anchor": "middle",
+          "value": { "expr": "fill_value", "format": "depth %.3f" },
+          "font_size": 9, "fill": "#475569" }
+      ]
+    },
+    {
+      "id": "pond",
+      "label": "Pond",
+      "block": "Pond",
+      "x": 290,
+      "y": 95,
+      "width": 120,
+      "height": 110,
+      "fill_max": 100,
+      "bind": {
+        "fill_value": { "block": "Pond", "property": "Storage" }
+      },
+      "thresholds": [
+        { "below": 0.25, "color": "#BFDBFE" },
+        { "below": 0.75, "color": "#3B82F6" },
+        { "above": 0.75, "color": "#1D4ED8" }
+      ],
+      "draw": [
+        { "shape": "rect", "x": 0.05, "y": 0, "w": 0.9, "h": 1,
+          "rx": 8, "fill": "#EFF6FF", "stroke": "#334155", "stroke_width": 1.6 },
+        { "shape": "rect", "x": 0.05, "y": { "expr": "1 - fill_fraction" },
+          "w": 0.9, "h": { "bind": "fill_fraction" },
+          "fill": { "bind": "water_color" }, "clip": true },
+        { "shape": "text", "x": 0.5, "y": 0.18, "anchor": "middle",
+          "value": { "bind": "label" }, "font_size": 13,
+          "font_weight": 700, "fill": "#0F172A" },
+        { "shape": "text", "x": 0.5, "y": 0.78, "anchor": "middle",
+          "value": { "expr": "fill_value", "format": "%.1f m³" },
+          "font_size": 10, "fill": "#0F172A" }
+      ]
+    },
+    {
+      "id": "fixed_head",
+      "label": "Fixed Head",
+      "block": "fixed_head (1)",
+      "x": 485,
+      "y": 120,
+      "width": 90,
+      "height": 60,
+      "fill_max": 100000,
+      "bind": {
+        "fill_value": { "block": "fixed_head (1)", "property": "Storage" }
+      },
+      "draw": [
+        { "shape": "rect", "x": 0, "y": 0, "w": 1, "h": 1,
+          "rx": 5, "fill": "#CBD5E1", "stroke": "#475569", "stroke_width": 1.5 },
+        { "shape": "text", "x": 0.5, "y": 0.56, "anchor": "middle",
+          "value": { "bind": "label" }, "font_size": 11,
+          "font_weight": 700, "fill": "#1E293B" }
+      ]
+    }
+  ],
+
+  "connectors": [
+    {
+      "link": "Catchment (1) - Pond (1)",
+      "from": "Catchment (1)",
+      "to": "Pond",
+      "attach": "auto",
+      "style": "arrow",
+      "bind": {
+        "flow_value": { "link": "Catchment (1) - Pond (1)", "property": "flow" }
+      }
+    },
+    {
+      "link": "Pond (1) - fixed_head (1)",
+      "from": "Pond",
+      "to": "fixed_head (1)",
+      "attach": "auto",
+      "style": "arrow",
+      "bind": {
+        "flow_value": { "link": "Pond (1) - fixed_head (1)", "property": "flow" }
+      }
+    }
+  ]
+}
