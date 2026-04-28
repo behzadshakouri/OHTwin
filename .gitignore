@@ -74,3 +74,9 @@ build-qmake-poweredge/bin/
 build-qmake-poweredge/moc/
 
 build-qmake-poweredge/obj/
+
+build-qmake-poweredge-vn/bin/
+
+build-qmake-poweredge-vn/moc/
+
+build-qmake-poweredge-vn/obj/

@@ -40,6 +40,7 @@ public:
     std::string modelSnapshotDir;  // directory for per-interval model JSON snapshots
     std::string weatherFile;       // optional weather JSON
     std::string vizFile;           // visualization JSON spec for VizRenderer (model-specific)
+    std::string modelName;         // active model profile name (VN, Drywell, HQ, R, etc.)
 
     // --- weather / NOAA / Open-Meteo ---
     std::string weatherSource = "openmeteo"; // "noaa" or "openmeteo"

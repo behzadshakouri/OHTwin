@@ -29,17 +29,41 @@ DEFINES += PowerEdge
 #DEFINES += WSL
 
 # ============================================================
+# Active DT model-config (enable ONE only)
+# Options: DT_MODEL_VN, DT_MODEL_DRYWELL, DT_MODEL_HQ, DT_MODEL_R
+# Default here: VN drywell
+# ============================================================
+CONFIG  += DT_MODEL_VN
+DEFINES += DT_MODEL_VN
+
+#CONFIG  += DT_MODEL_DRYWELL
+#DEFINES += DT_MODEL_DRYWELL
+
+#CONFIG  += DT_MODEL_HQ
+#DEFINES += DT_MODEL_HQ
+
+#CONFIG  += DT_MODEL_R
+#DEFINES += DT_MODEL_R
+
+# ============================================================
 # Host build folders (keeps build artifacts out of the source tree)
 # ============================================================
-BUILD_TAG = unknown
+HOST_TAG = unknown
+MODEL_TAG = unknown
 
-contains(DEFINES, Jason)      { BUILD_TAG = jason }
-contains(DEFINES, PowerEdge)  { BUILD_TAG = poweredge }
-contains(DEFINES, Behzad)     { BUILD_TAG = behzad }
-contains(DEFINES, Arash)      { BUILD_TAG = arash }
-contains(DEFINES, SligoCreek) { BUILD_TAG = sligocreek }
-contains(DEFINES, WSL)        { BUILD_TAG = wsl }
+contains(DEFINES, Jason)      { HOST_TAG = jason }
+contains(DEFINES, PowerEdge)  { HOST_TAG = poweredge }
+contains(DEFINES, Behzad)     { HOST_TAG = behzad }
+contains(DEFINES, Arash)      { HOST_TAG = arash }
+contains(DEFINES, SligoCreek) { HOST_TAG = sligocreek }
+contains(DEFINES, WSL)        { HOST_TAG = wsl }
 
+contains(DEFINES, DT_MODEL_VN)      { MODEL_TAG = vn }
+contains(DEFINES, DT_MODEL_DRYWELL) { MODEL_TAG = drywell }
+contains(DEFINES, DT_MODEL_HQ)      { MODEL_TAG = hq }
+contains(DEFINES, DT_MODEL_R)       { MODEL_TAG = r }
+
+BUILD_TAG = $$HOST_TAG-$$MODEL_TAG
 BUILD_DIR = $$PWD/build-qmake-$$BUILD_TAG
 
 !exists($$BUILD_DIR)     { system(mkdir -p $$BUILD_DIR) }
@@ -55,6 +79,8 @@ RCC_DIR     = $$BUILD_DIR/rcc
 UI_DIR      = $$BUILD_DIR/ui
 DESTDIR     = $$BUILD_DIR/bin
 
+message("HOST_TAG    = $$HOST_TAG")
+message("MODEL_TAG   = $$MODEL_TAG")
 message("BUILD_TAG   = $$BUILD_TAG")
 message("BUILD_DIR   = $$BUILD_DIR")
 message("DESTDIR     = $$DESTDIR")
