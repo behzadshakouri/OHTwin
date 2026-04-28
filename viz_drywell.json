@@ -1,0 +1,496 @@
+{
+  "canvas": { "x": 0, "y": 0, "width": 920, "height": 820 },
+
+  "components": [
+    {
+      "id": "rain",
+      "label": "Rain",
+      "block": "Catchment",
+      "x": 30,
+      "y": 20,
+      "width": 100,
+      "height": 45,
+      "fill_max": 0.05,
+      "bind": {
+        "fill_value": { "source": "Rain", "property": "Intensity" }
+      },
+      "thresholds": [
+        { "below": 0.001, "color": "#CBD5E1" },
+        { "below": 0.01,  "color": "#60A5FA" },
+        { "above": 0.01,  "color": "#2563EB" }
+      ],
+      "draw": [
+        {
+          "shape": "ellipse",
+          "cx": 0.25,
+          "cy": 0.50,
+          "rx": 0.12,
+          "ry": 0.22,
+          "fill": { "bind": "water_color" },
+          "stroke": "#64748B",
+          "stroke_width": 1
+        },
+        {
+          "shape": "ellipse",
+          "cx": 0.45,
+          "cy": 0.45,
+          "rx": 0.14,
+          "ry": 0.26,
+          "fill": { "bind": "water_color" },
+          "stroke": "#64748B",
+          "stroke_width": 1
+        },
+        {
+          "shape": "ellipse",
+          "cx": 0.65,
+          "cy": 0.50,
+          "rx": 0.12,
+          "ry": 0.22,
+          "fill": { "bind": "water_color" },
+          "stroke": "#64748B",
+          "stroke_width": 1
+        },
+        {
+          "shape": "text",
+          "x": 0.5,
+          "y": 0.92,
+          "anchor": "middle",
+          "value": { "bind": "label" },
+          "font_size": 10,
+          "font_weight": 600,
+          "fill": "#1E293B"
+        }
+      ]
+    },
+
+    {
+      "id": "catchment",
+      "label": "Catchment",
+      "block": "Catchment",
+      "x": 165,
+      "y": 20,
+      "width": 140,
+      "height": 60,
+      "fill_max": 10.0,
+      "bind": {
+        "fill_value": { "block": "Catchment", "property": "Storage" }
+      },
+      "thresholds": [
+        { "below": 0.5, "color": "#D1FAE5" },
+        { "below": 0.8, "color": "#60A5FA" },
+        { "above": 0.8, "color": "#2563EB" }
+      ],
+      "draw": [
+        {
+          "shape": "polygon",
+          "points": [[0,1],[1,1],[1,0.25],[0,0.55]],
+          "fill": "#D1FAE5",
+          "stroke": "#64748B",
+          "stroke_width": 1.5
+        },
+        {
+          "shape": "text",
+          "x": 0.5,
+          "y": 0.42,
+          "anchor": "middle",
+          "value": { "bind": "label" },
+          "font_size": 11,
+          "font_weight": 600,
+          "fill": "#1E293B"
+        },
+        {
+          "shape": "text",
+          "x": 0.5,
+          "y": 0.72,
+          "anchor": "middle",
+          "value": { "expr": "fill_value", "format": "%.2f m³" },
+          "font_size": 9,
+          "fill": "#475569"
+        }
+      ]
+    },
+
+    {
+      "id": "well_c",
+      "label": "Well_c",
+      "block": "Well_c",
+      "x": 95,
+      "y": 115,
+      "width": 60,
+      "height": 120,
+      "fill_max": 10.0,
+      "bind": {
+        "fill_value": { "block": "Well_c", "property": "Storage" }
+      },
+      "thresholds": [
+        { "below": 0.4, "color": "#93C5FD" },
+        { "below": 0.8, "color": "#3B82F6" },
+        { "above": 0.8, "color": "#1D4ED8" }
+      ],
+      "draw": [
+        {
+          "shape": "rect",
+          "x": 0.15,
+          "y": 0,
+          "w": 0.70,
+          "h": 1,
+          "rx": 8,
+          "fill": "#EFF6FF",
+          "stroke": "#334155",
+          "stroke_width": 1.5
+        },
+        {
+          "shape": "rect",
+          "x": 0.15,
+          "y": { "expr": "1 - fill_fraction" },
+          "w": 0.70,
+          "h": { "bind": "fill_fraction" },
+          "fill": { "bind": "water_color" },
+          "clip": true
+        },
+        {
+          "shape": "text",
+          "x": 0.5,
+          "y": 0.12,
+          "anchor": "middle",
+          "value": { "bind": "label" },
+          "font_size": 10,
+          "font_weight": 600,
+          "fill": "#0F172A"
+        }
+      ]
+    },
+
+    {
+      "id": "well_g",
+      "label": "Well_g",
+      "block": "Well_g",
+      "x": 95,
+      "y": 250,
+      "width": 60,
+      "height": 430,
+      "fill_max": 50.0,
+      "bind": {
+        "fill_value": { "block": "Well_g", "property": "Storage" }
+      },
+      "thresholds": [
+        { "below": 0.4, "color": "#BFDBFE" },
+        { "below": 0.8, "color": "#3B82F6" },
+        { "above": 0.8, "color": "#1D4ED8" }
+      ],
+      "draw": [
+        {
+          "shape": "rect",
+          "x": 0.15,
+          "y": 0,
+          "w": 0.70,
+          "h": 1,
+          "rx": 8,
+          "fill": "#EFF6FF",
+          "stroke": "#334155",
+          "stroke_width": 1.5
+        },
+        {
+          "shape": "rect",
+          "x": 0.15,
+          "y": { "expr": "1 - fill_fraction" },
+          "w": 0.70,
+          "h": { "bind": "fill_fraction" },
+          "fill": { "bind": "water_color" },
+          "clip": true
+        },
+        {
+          "shape": "text",
+          "x": 0.5,
+          "y": 0.08,
+          "anchor": "middle",
+          "value": { "bind": "label" },
+          "font_size": 10,
+          "font_weight": 600,
+          "fill": "#0F172A"
+        }
+      ]
+    },
+
+    {
+      "id": "junction",
+      "label": "Junction",
+      "block": "Junction_elastic",
+      "x": 25,
+      "y": 250,
+      "width": 55,
+      "height": 55,
+      "fill_max": 1.0,
+      "bind": {
+        "fill_value": { "block": "Junction_elastic", "property": "Storage" }
+      },
+      "draw": [
+        {
+          "shape": "ellipse",
+          "cx": 0.5,
+          "cy": 0.5,
+          "rx": 0.45,
+          "ry": 0.45,
+          "fill": "#FDE68A",
+          "stroke": "#92400E",
+          "stroke_width": 1.5
+        },
+        {
+          "shape": "text",
+          "x": 0.5,
+          "y": 0.55,
+          "anchor": "middle",
+          "value": "J",
+          "font_size": 14,
+          "font_weight": 700,
+          "fill": "#78350F"
+        }
+      ]
+    },
+
+    {
+      "id": "groundwater",
+      "label": "Ground Water",
+      "block": "Ground Water",
+      "x": 165,
+      "y": 765,
+      "width": 690,
+      "height": 35,
+      "fill_max": 100000,
+      "bind": {
+        "fill_value": { "block": "Ground Water", "property": "Storage" }
+      },
+      "draw": [
+        {
+          "shape": "rect",
+          "x": 0,
+          "y": 0,
+          "w": 1,
+          "h": 1,
+          "rx": 4,
+          "fill": "#CBD5E1",
+          "stroke": "#475569",
+          "stroke_width": 1.5
+        },
+        {
+          "shape": "text",
+          "x": 0.5,
+          "y": 0.58,
+          "anchor": "middle",
+          "value": { "bind": "label" },
+          "font_size": 12,
+          "font_weight": 700,
+          "fill": "#1E293B"
+        }
+      ]
+    }
+  ],
+
+  "repeat_components": [
+    {
+      "counters": {
+        "i": { "range": [1, 16] },
+        "j": { "range": [0, 14] }
+      },
+      "template": {
+        "id": "soil_g_${i}_${j}",
+        "type": "soil_g",
+        "label": "g ${i},${j}",
+        "block": "Soil-g (${i}$${j})",
+
+        "x": { "counter": "i", "range": [190, 750] },
+        "y": { "counter": "j", "range": [120, 335] },
+        "width": 28,
+        "height": 11,
+
+        "fill_max": 1.0,
+
+        "bind": {
+          "fill_value": {
+            "block": "Soil-g (${i}$${j})",
+            "property": "theta"
+          }
+        },
+
+        "thresholds": [
+          { "below": 0.15, "color": "#FEF3C7" },
+          { "below": 0.30, "color": "#93C5FD" },
+          { "above": 0.30, "color": "#1D4ED8" }
+        ],
+
+        "draw": [
+          {
+            "shape": "rect",
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1,
+            "rx": 1,
+            "fill": { "bind": "water_color" },
+            "stroke": "#64748B",
+            "stroke_width": 0.35
+          }
+        ]
+      }
+    },
+
+    {
+      "counters": {
+        "i": { "range": [0, 16] },
+        "j": { "range": [0, 29] }
+      },
+      "template": {
+        "id": "soil_uw_${i}_${j}",
+        "type": "soil_uw",
+        "label": "uw ${i},${j}",
+        "block": "Soil-uw (${i}$${j})",
+
+        "x": { "counter": "i", "range": [160, 750] },
+        "y": { "counter": "j", "range": [360, 735] },
+        "width": 28,
+        "height": 9,
+
+        "fill_max": 1.0,
+
+        "bind": {
+          "fill_value": {
+            "block": "Soil-uw (${i}$${j})",
+            "property": "theta"
+          }
+        },
+
+        "thresholds": [
+          { "below": 0.15, "color": "#FEF3C7" },
+          { "below": 0.30, "color": "#60A5FA" },
+          { "above": 0.30, "color": "#1E40AF" }
+        ],
+
+        "draw": [
+          {
+            "shape": "rect",
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1,
+            "rx": 1,
+            "fill": { "bind": "water_color" },
+            "stroke": "#64748B",
+            "stroke_width": 0.3
+          }
+        ]
+      }
+    }
+  ],
+
+  "connectors": [
+    {
+      "link": "Catchment to well",
+      "from": "Catchment",
+      "to": "Well_c",
+      "attach": "auto",
+      "style": "arrow",
+      "bind": {
+        "flow_value": {
+          "link": "Catchment to well",
+          "property": "flow"
+        }
+      }
+    },
+
+    {
+      "link": "Well_to_well_overflow",
+      "from": "Well_c",
+      "to": "Well_g",
+      "attach": "auto",
+      "style": "arrow",
+      "bind": {
+        "flow_value": {
+          "link": "Well_to_well_overflow",
+          "property": "flow"
+        }
+      }
+    },
+
+    {
+      "link": "Well_to_junction",
+      "from": "Well_c",
+      "to": "Junction_elastic",
+      "attach": "auto",
+      "style": "line",
+      "bind": {
+        "flow_value": {
+          "link": "Well_to_junction",
+          "property": "flow"
+        }
+      }
+    },
+
+    {
+      "link": "Junction_to_well",
+      "from": "Junction_elastic",
+      "to": "Well_g",
+      "attach": "auto",
+      "style": "line",
+      "bind": {
+        "flow_value": {
+          "link": "Junction_to_well",
+          "property": "flow"
+        }
+      }
+    },
+
+    {
+      "link": "VL_Well_g - Soil-uw (0$0)",
+      "from": "Well_g",
+      "to": "Soil-uw (0$0)",
+      "attach": "auto",
+      "style": "arrow",
+      "bind": {
+        "flow_value": {
+          "link": "VL_Well_g - Soil-uw (0$0)",
+          "property": "flow"
+        }
+      }
+    }
+  ],
+
+  "repeat_connectors": [
+    {
+      "counters": {
+        "j": { "range": [0, 14] }
+      },
+      "template": {
+        "link": "HL_Well_g - Soil-g (1$${j})",
+        "from": "Well_g",
+        "to": "Soil-g (1$${j})",
+        "attach": "auto",
+        "style": "line",
+        "bind": {
+          "flow_value": {
+            "link": "HL_Well_g - Soil-g (1$${j})",
+            "property": "flow"
+          }
+        }
+      }
+    },
+
+    {
+      "counters": {
+        "i": { "range": [0, 16] }
+      },
+      "template": {
+        "link": "Soil to Groundwater (${i})",
+        "from": "Soil-uw (${i}$29)",
+        "to": "Ground Water",
+        "attach": "auto",
+        "style": "line",
+        "bind": {
+          "flow_value": {
+            "link": "Soil to Groundwater (${i})",
+            "property": "flow"
+          }
+        }
+      }
+    }
+  ]
+}
