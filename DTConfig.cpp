@@ -1,8 +1,8 @@
 #include "DTConfig.h"
 
-#include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -10,78 +10,6 @@
 
 #include <cctype>
 #include <iostream>
-
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
-static QString stringFromModelOrRoot(const QJsonObject &root,
-                                     const QJsonObject &model,
-                                     const char *key,
-                                     const QString &defaultValue = QString())
-{
-    if (model.contains(key) && model.value(key).isString())
-        return model.value(key).toString();
-    if (root.contains(key) && root.value(key).isString())
-        return root.value(key).toString();
-    return defaultValue;
-}
-
-static QJsonArray arrayFromModelOrRoot(const QJsonObject &root,
-                                       const QJsonObject &model,
-                                       const char *key)
-{
-    if (model.contains(key) && model.value(key).isArray())
-        return model.value(key).toArray();
-    if (root.contains(key) && root.value(key).isArray())
-        return root.value(key).toArray();
-    return {};
-}
-
-static QString expandVars(QString s, const QJsonObject &vars)
-{
-    for (auto it = vars.constBegin(); it != vars.constEnd(); ++it)
-        s.replace("${" + it.key() + "}", it.value().toString());
-    return s;
-}
-
-static bool hasUnresolvedVar(const QString &s)
-{
-    return s.contains("${") && s.contains("}");
-}
-
-static QString compiledMachineName()
-{
-#ifdef PowerEdge
-    return "PowerEdge";
-#elif defined(Jason)
-    return "Jason";
-#elif defined(Behzad)
-    return "Behzad";
-#elif defined(Arash)
-    return "Arash";
-#elif defined(SligoCreek)
-    return "SligoCreek";
-#elif defined(WSL)
-    return "WSL";
-#else
-    return {};
-#endif
-}
-
-static QString compiledModelName()
-{
-#ifdef DT_MODEL_VN
-    return "VN";
-#elif defined(DT_MODEL_DRYWELL)
-    return "Drywell";
-#elif defined(DT_MODEL_HQ)
-    return "HQ";
-#elif defined(DT_MODEL_R)
-    return "R";
-#else
-    return {};
-#endif
-}
 
 // ---------------------------------------------------------------------------
 // DTConfig::parseIntervalMs
@@ -129,7 +57,7 @@ qint64 DTConfig::parseIntervalMs(const std::string &s, QString &err)
     else
     {
         err = QString("unknown interval unit '%1' (use s, min, hr, day)")
-              .arg(QString::fromStdString(unit));
+        .arg(QString::fromStdString(unit));
         return -1;
     }
 
@@ -144,11 +72,33 @@ qint64 DTConfig::parseIntervalMs(const std::string &s, QString &err)
 }
 
 // ---------------------------------------------------------------------------
+// DTConfig::resolvePath
+// ---------------------------------------------------------------------------
+QString DTConfig::resolvePath(const QString &p) const
+{
+    if (p.isEmpty()) return {};
+    if (QDir::isAbsolutePath(p)) return QDir::cleanPath(p);
+    return QDir::cleanPath(QString::fromStdString(deploymentRoot) + "/" + p);
+}
+
+// ---------------------------------------------------------------------------
 // DTConfig::load
 // ---------------------------------------------------------------------------
-bool DTConfig::load(QString &errorMessage)
+bool DTConfig::load(const QString &deploymentRootIn, QString &errorMessage)
 {
-    const QString configPath = QCoreApplication::applicationDirPath() + "/config.json";
+    // ------------------------------------------------------------------
+    // Resolve deployment root
+    // ------------------------------------------------------------------
+    const QFileInfo rootInfo(deploymentRootIn);
+    if (!rootInfo.exists() || !rootInfo.isDir())
+    {
+        errorMessage = "deployment path is not a directory: " + deploymentRootIn;
+        return false;
+    }
+    deploymentRoot = rootInfo.absoluteFilePath().toStdString();
+
+    const QString configPath =
+        QDir(QString::fromStdString(deploymentRoot)).absoluteFilePath("config.json");
 
     QFile file(configPath);
     if (!file.exists())
@@ -175,107 +125,72 @@ bool DTConfig::load(QString &errorMessage)
         return false;
     }
 
-    raw = doc.object();
+    const QJsonObject root = doc.object();
     stateVarExports.clear();
 
-    // Machine selection: config value wins; otherwise use qmake DEFINE.
-    QString machine = raw.value("machine").toString().trimmed();
-    if (machine.isEmpty())
-        machine = compiledMachineName();
-
-    const QJsonObject machines = raw.value("machines").toObject();
-    QJsonObject vars = machines.value(machine).toObject();
-
-    if (!machine.isEmpty() && vars.isEmpty())
+    // ------------------------------------------------------------------
+    // deployment{}
+    // ------------------------------------------------------------------
+    if (!root.contains("deployment") || !root.value("deployment").isObject())
     {
-        errorMessage = "config.json machine profile not found: " + machine;
+        errorMessage = "config.json is missing required 'deployment' object";
+        return false;
+    }
+    const QJsonObject dep = root.value("deployment").toObject();
+
+    deploymentName = dep.value("name").toString().trimmed().toStdString();
+    if (deploymentName.empty())
+    {
+        // Fall back to the directory name if the config omits it.
+        deploymentName = rootInfo.fileName().toStdString();
+    }
+
+    port = dep.value("port").toInt(0);
+    if (port <= 0)
+    {
+        errorMessage = "config.json deployment.port must be a positive integer";
         return false;
     }
 
-    // Model selection: config value wins; otherwise use qmake DEFINE.
-    QString model = raw.value("model").toString().trimmed();
-    if (model.isEmpty())
-        model = compiledModelName();
-
-    const QJsonObject models = raw.value("models").toObject();
-    QJsonObject modelObj;
-    if (!model.isEmpty())
+    const QString modelFileQ = dep.value("model_file").toString().trimmed();
+    if (modelFileQ.isEmpty())
     {
-        modelObj = models.value(model).toObject();
-        if (modelObj.isEmpty())
-        {
-            errorMessage = "config.json model profile not found: " + model;
-            return false;
-        }
-    }
-
-    if (!model.isEmpty())
-    {
-        vars.insert("model_key", model);
-        vars.insert("model", model);
-        vars.insert("model_lower", model.toLower());
-    }
-
-    modelName = model.toStdString();
-
-    const QString scriptFileQ = expandVars(stringFromModelOrRoot(raw, modelObj, "script_file"), vars);
-    const QString stateDirQ   = expandVars(stringFromModelOrRoot(raw, modelObj, "state_dir"), vars);
-    const QString outputDirQ  = expandVars(stringFromModelOrRoot(raw, modelObj, "output_dir"), vars);
-    const QString snapDirQ    = expandVars(stringFromModelOrRoot(raw, modelObj, "model_snapshot_dir"), vars);
-
-    if (scriptFileQ.trimmed().isEmpty() || stateDirQ.trimmed().isEmpty() ||
-        outputDirQ.trimmed().isEmpty()  || snapDirQ.trimmed().isEmpty())
-    {
-        errorMessage = "config.json is missing one or more required path fields: "
-                       "script_file, state_dir, output_dir, model_snapshot_dir";
+        errorMessage = "config.json deployment.model_file is required";
         return false;
     }
+    scriptFile = resolvePath(modelFileQ).toStdString();
 
-    if (hasUnresolvedVar(scriptFileQ) || hasUnresolvedVar(stateDirQ) ||
-        hasUnresolvedVar(outputDirQ)  || hasUnresolvedVar(snapDirQ))
-    {
-        errorMessage = "config.json contains unresolved path variable(s). "
-                       "Check machine/model/machines/models profiles.";
-        return false;
-    }
-
-    scriptFile       = scriptFileQ.toStdString();
-    stateDir         = stateDirQ.toStdString();
-    outputDir        = outputDirQ.toStdString();
-    modelSnapshotDir = snapDirQ.toStdString();
-
-    loadModelJson = expandVars(stringFromModelOrRoot(raw, modelObj, "load_model_json"), vars).toStdString();
-    weatherFile   = expandVars(stringFromModelOrRoot(raw, modelObj, "weather_file"), vars).toStdString();
-
-    QString vizFileQ = expandVars(stringFromModelOrRoot(raw, modelObj, "viz_file"), vars).trimmed();
+    const QString vizFileQ = dep.value("viz_file").toString().trimmed();
     if (vizFileQ.isEmpty())
-        vizFileQ = QCoreApplication::applicationDirPath() + "/viz.json";
-
-    if (hasUnresolvedVar(vizFileQ))
     {
-        errorMessage = "config.json viz_file contains unresolved path variable(s). "
-                       "Check machine/model/machines/models profiles.";
+        errorMessage = "config.json deployment.viz_file is required";
         return false;
     }
+    vizFile = resolvePath(vizFileQ).toStdString();
 
-    vizFile = vizFileQ.toStdString();
+    // ------------------------------------------------------------------
+    // runtime{}
+    // ------------------------------------------------------------------
+    if (!root.contains("runtime") || !root.value("runtime").isObject())
+    {
+        errorMessage = "config.json is missing required 'runtime' object";
+        return false;
+    }
+    const QJsonObject rt = root.value("runtime").toObject();
 
-    noaaOffice    = raw.value("noaa_office").toString("LWX").toStdString();
-    noaaGridX     = raw.value("noaa_grid_x").toInt(0);
-    noaaGridY     = raw.value("noaa_grid_y").toInt(0);
-    weatherSource = raw.value("weather_source").toString("openmeteo").trimmed().toStdString();
-    latitude      = raw.value("latitude").toDouble(0.0);
-    longitude     = raw.value("longitude").toDouble(0.0);
+    weatherSource = rt.value("weather_source").toString("openmeteo").trimmed().toStdString();
+    latitude      = rt.value("latitude").toDouble(0.0);
+    longitude     = rt.value("longitude").toDouble(0.0);
 
-    startDatetime      = raw.value("start_datetime").toString().trimmed().toStdString();
-    intervalStr        = raw.value("interval").toString("1day").trimmed().toStdString();
-    forecastHorizonStr = raw.value("forecast_horizon").toString().trimmed().toStdString();
+    startDatetime      = rt.value("start_datetime").toString().trimmed().toStdString();
+    intervalStr        = rt.value("interval").toString("1day").trimmed().toStdString();
+    forecastHorizonStr = rt.value("forecast_horizon").toString().trimmed().toStdString();
 
     QString intervalErr;
     intervalMs = parseIntervalMs(intervalStr, intervalErr);
     if (intervalMs < 0)
     {
-        errorMessage = "config.json interval error: " + intervalErr;
+        errorMessage = "config.json runtime.interval error: " + intervalErr;
         return false;
     }
 
@@ -285,7 +200,7 @@ bool DTConfig::load(QString &errorMessage)
         forecastHorizonMs = parseIntervalMs(forecastHorizonStr, horizonErr);
         if (forecastHorizonMs < 0)
         {
-            errorMessage = "config.json forecast_horizon error: " + horizonErr;
+            errorMessage = "config.json runtime.forecast_horizon error: " + horizonErr;
             return false;
         }
     }
@@ -294,52 +209,69 @@ bool DTConfig::load(QString &errorMessage)
         forecastHorizonMs = 0;
     }
 
-    const QJsonArray stateVars = arrayFromModelOrRoot(raw, modelObj, "state_variables");
+    // Optional cold-start / weather paths (relative to deployment root).
+    loadModelJson =
+        resolvePath(rt.value("load_model_json").toString().trimmed()).toStdString();
+    weatherFile =
+        resolvePath(rt.value("weather_file").toString().trimmed()).toStdString();
+
+    // ------------------------------------------------------------------
+    // state_variables (relative output_paths -> deployment root)
+    // ------------------------------------------------------------------
+    const QJsonArray stateVars = rt.value("state_variables").toArray();
     for (const auto &entry : stateVars)
     {
         if (!entry.isObject()) continue;
 
         const QJsonObject obj = entry.toObject();
         StateVarExport exp;
-        exp.variable = obj.value("variable").toString().toStdString();
-
-        const QString expandedOutputPath = expandVars(obj.value("output_path").toString(), vars);
-        if (hasUnresolvedVar(expandedOutputPath))
-        {
-            errorMessage = "config.json state_variables output_path contains unresolved path variable(s).";
-            return false;
-        }
-
-        exp.outputPath = expandedOutputPath.toStdString();
+        exp.variable   = obj.value("variable").toString().toStdString();
+        exp.outputPath = resolvePath(obj.value("output_path").toString()).toStdString();
 
         if (!exp.variable.empty() && !exp.outputPath.empty())
             stateVarExports.push_back(exp);
     }
 
+    // ------------------------------------------------------------------
+    // Auto-derived working directories under the deployment root
+    // ------------------------------------------------------------------
+    const QString rootQ = QString::fromStdString(deploymentRoot);
+    stateDir         = QDir(rootQ).absoluteFilePath("state").toStdString();
+    outputDir        = QDir(rootQ).absoluteFilePath("outputs").toStdString();
+    modelSnapshotDir = QDir(rootQ).absoluteFilePath("snapshots").toStdString();
+
     for (const auto &dir : { stateDir, outputDir, modelSnapshotDir })
+        QDir().mkpath(QString::fromStdString(dir));
+
+    // ------------------------------------------------------------------
+    // Sanity-check that the model and viz files exist
+    // ------------------------------------------------------------------
+    if (!QFileInfo::exists(QString::fromStdString(scriptFile)))
     {
-        if (!dir.empty())
-            QDir().mkpath(QString::fromStdString(dir));
+        errorMessage = "model_file does not exist: " + QString::fromStdString(scriptFile);
+        return false;
+    }
+    if (!QFileInfo::exists(QString::fromStdString(vizFile)))
+    {
+        errorMessage = "viz_file does not exist: " + QString::fromStdString(vizFile);
+        return false;
     }
 
+    // ------------------------------------------------------------------
+    // Log resolved configuration
+    // ------------------------------------------------------------------
     std::cout << "[Config] config.json       : " << configPath.toStdString() << "\n"
-              << "[Config] machine           : " << machine.toStdString() << "\n"
-              << "[Config] model             : " << model.toStdString() << "\n"
-              << "[Config] script_file       : " << scriptFile << "\n";
-
-    if (!loadModelJson.empty())
-        std::cout << "[Config] load_model_json   : " << loadModelJson << "\n";
-
-    std::cout << "[Config] state_dir         : " << stateDir << "\n"
+              << "[Config] deployment_root   : " << deploymentRoot << "\n"
+              << "[Config] deployment_name   : " << deploymentName << "\n"
+              << "[Config] port              : " << port << "\n"
+              << "[Config] script_file       : " << scriptFile << "\n"
+              << "[Config] viz_file          : " << vizFile << "\n"
+              << "[Config] state_dir         : " << stateDir << "\n"
               << "[Config] output_dir        : " << outputDir << "\n"
               << "[Config] model_snapshot_dir: " << modelSnapshotDir << "\n"
-              << "[Config] viz_file          : " << vizFile << "\n"
               << "[Config] weather_source    : " << weatherSource << "\n"
               << "[Config] latitude          : " << latitude << "\n"
               << "[Config] longitude         : " << longitude << "\n"
-              << "[Config] noaa_office       : " << noaaOffice << "\n"
-              << "[Config] noaa_grid_x       : " << noaaGridX << "\n"
-              << "[Config] noaa_grid_y       : " << noaaGridY << "\n"
               << "[Config] interval          : " << intervalStr
               << " (" << intervalMs << " ms)\n";
 
@@ -351,6 +283,12 @@ bool DTConfig::load(QString &errorMessage)
 
     if (!startDatetime.empty())
         std::cout << "[Config] start_datetime    : " << startDatetime << "\n";
+
+    if (!loadModelJson.empty())
+        std::cout << "[Config] load_model_json   : " << loadModelJson << "\n";
+
+    if (!weatherFile.empty())
+        std::cout << "[Config] weather_file      : " << weatherFile << "\n";
 
     return true;
 }

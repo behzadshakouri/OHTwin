@@ -80,3 +80,9 @@ build-qmake-poweredge-vn/bin/
 build-qmake-poweredge-vn/moc/
 
 build-qmake-poweredge-vn/obj/
+
+build-qmake/bin/
+
+build-qmake/moc/
+
+build-qmake/obj/

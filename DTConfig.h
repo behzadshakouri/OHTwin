@@ -19,36 +19,50 @@ struct StateVarExport
 
 // ---------------------------------------------------------------------------
 // DTConfig
-// Loads and validates config.json from next to the binary.
 //
-// Paths may be machine-based in config.json using ${project_root}; DTConfig.cpp
-// expands those values from the selected machine profile before passing them to
-// OHQ. All final paths are stored as std::string for direct OHQ use.
+// Loads and validates a deployment's config.json.
+//
+// Each deployment is a self-contained directory:
+//
+//   <deployment_root>/
+//     config.json           (Option-A: { deployment{...}, runtime{...} })
+//     viz_<name>.json       (path is given by deployment.viz_file)
+//     model/<name>.ohq      (path is given by deployment.model_file)
+//     state/                (auto-created: state snapshots)
+//     outputs/              (auto-created: simulation outputs)
+//     snapshots/            (auto-created: per-interval model JSON snapshots)
+//
+// Relative paths inside config.json (model_file, viz_file, output_path) are
+// resolved against deployment_root. The auto-derived working directories
+// (state/, outputs/, snapshots/) are created if missing.
+//
+// All final paths are stored as absolute std::string for direct OHQ use.
 // ---------------------------------------------------------------------------
 class DTConfig
 {
 public:
-    // Load config.json from the same directory as the running binary.
+    // Load <deploymentRoot>/config.json.
     // Returns true on success; populates errorMessage on failure.
-    bool load(QString &errorMessage);
+    bool load(const QString &deploymentRoot, QString &errorMessage);
 
-    // --- paths ---
-    std::string scriptFile;        // .ohq script used on cold start if loadModelJson is empty
-    std::string loadModelJson;     // optional: force cold-start from this model JSON instead of script
-    std::string stateDir;          // directory for timestamped state snapshots
-    std::string outputDir;         // directory for simulation output files / nginx-served outputs
-    std::string modelSnapshotDir;  // directory for per-interval model JSON snapshots
-    std::string weatherFile;       // optional weather JSON
-    std::string vizFile;           // visualization JSON spec for VizRenderer (model-specific)
-    std::string modelName;         // active model profile name (VN, Drywell, HQ, R, etc.)
+    // --- deployment metadata ---
+    std::string deploymentRoot;    // absolute path to the deployment directory
+    std::string deploymentName;    // canonical name from config (deployment.name)
+    int         port = 0;          // nginx/HTTP port for this deployment
 
-    // --- weather / NOAA / Open-Meteo ---
-    std::string weatherSource = "openmeteo"; // "noaa" or "openmeteo"
+    // --- paths (all absolute after load()) ---
+    std::string scriptFile;        // .ohq script used on cold start
+    std::string vizFile;           // visualization JSON spec for VizRenderer
+    std::string stateDir;          // <deployment_root>/state
+    std::string outputDir;         // <deployment_root>/outputs
+    std::string modelSnapshotDir;  // <deployment_root>/snapshots
+    std::string weatherFile;       // optional weather JSON (absolute path)
+    std::string loadModelJson;     // optional cold-start model JSON (absolute path)
+
+    // --- weather / Open-Meteo ---
+    std::string weatherSource = "openmeteo";
     double      latitude      = 0.0;
     double      longitude     = 0.0;
-    std::string noaaOffice;        // e.g. "LWX"
-    int         noaaGridX = 0;
-    int         noaaGridY = 0;
 
     // --- timing ---
     // Accepted syntax: "300s", "15min", "4hr", "1day".
@@ -67,11 +81,13 @@ public:
     // --- state variable exports ---
     std::vector<StateVarExport> stateVarExports;
 
-    // Raw JSON object kept for forward compatibility / optional inspection.
-    QJsonObject raw;
-
 private:
     // Parse "300s", "15min", "4hr", "1day" -> milliseconds.
     // Returns -1 on parse error and writes details into err.
     static qint64 parseIntervalMs(const std::string &s, QString &err);
+
+    // Resolve a path string against deploymentRoot. Absolute paths are
+    // returned as-is; relative paths are joined with deploymentRoot.
+    // Empty input returns empty.
+    QString resolvePath(const QString &p) const;
 };

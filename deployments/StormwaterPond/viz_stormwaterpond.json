@@ -1,0 +1,181 @@
+{
+    "canvas": { "width": 420, "height": 500 },
+
+    "components": [
+
+        {
+            "id": "rain",
+            "block": "Precipitation (1)",
+            "label": "Precipitation",
+            "x": 20, "y": 10, "width": 380, "height": 55,
+            "bind": {
+                "intensity": { "source": "Precipitation (1)", "property": "Intensity" }
+            },
+            "draw": [
+                { "shape": "ellipse", "cx": 0.10, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                { "shape": "ellipse", "cx": 0.20, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                { "shape": "ellipse", "cx": 0.30, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                { "shape": "ellipse", "cx": 0.40, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                { "shape": "ellipse", "cx": 0.50, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                { "shape": "ellipse", "cx": 0.60, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                { "shape": "ellipse", "cx": 0.70, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                { "shape": "ellipse", "cx": 0.80, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                { "shape": "ellipse", "cx": 0.90, "cy": 0.55, "rx": 0.012, "ry": 0.20, "fill": {"bind": "water_color"} },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.20,
+                    "anchor": "middle",
+                    "value": {"bind": "label"},
+                    "font_size": 11, "font_weight": 600, "fill": "#1E293B"
+                }
+            ]
+        },
+
+        {
+            "id": "catchment_1",
+            "block": "Catchment (1)",
+            "label": "Catchment",
+            "x": 60, "y": 80, "width": 300, "height": 80,
+            "draw": [
+                {
+                    "shape": "polygon",
+                    "points": [[0, 1], [1, 1], [1, 0.55], [0, 0.30]],
+                    "fill": "#94A3B8",
+                    "stroke": "#475569",
+                    "stroke_width": 1.5
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.85,
+                    "anchor": "middle",
+                    "value": {"bind": "label"},
+                    "font_size": 11, "font_weight": 600, "fill": "#1E293B"
+                }
+            ]
+        },
+
+        {
+            "id": "pond",
+            "block": "Pond (1)",
+            "label": "Pond",
+            "fill_max": 1000.0,
+            "x": 70, "y": 200, "width": 280, "height": 160,
+            "bind": {
+                "fill_value": { "block": "Pond (1)", "property": "Storage" }
+            },
+            "thresholds": [
+                { "below": 0.50, "color": "#3B82F6" },
+                { "below": 0.72, "color": "#2563EB" },
+                { "above": 0.72, "color": "#EF4444" }
+            ],
+            "draw": [
+                {
+                    "shape": "polygon",
+                    "points": [[0, 0.15], [1, 0.15], [0.92, 1], [0.08, 1]],
+                    "fill": "#A78A5E",
+                    "stroke": "#6B5B3A",
+                    "stroke_width": 1.5
+                },
+                {
+                    "shape": "line",
+                    "x1": 0.04, "y1": 0.336,
+                    "x2": 0.96, "y2": 0.336,
+                    "stroke": "#9CA3AF",
+                    "stroke_width": 1,
+                    "dash": "4 3"
+                },
+                {
+                    "shape": "text",
+                    "x": 0.97, "y": 0.32,
+                    "anchor": "end",
+                    "value": "weir",
+                    "font_size": 8, "fill": "#6B7280"
+                },
+                {
+                    "shape": "rect",
+                    "x": 0.08,
+                    "y": {"expr": "1 - 0.85 * fill_fraction"},
+                    "w": 0.84,
+                    "h": {"expr": "0.85 * fill_fraction"},
+                    "fill": {"bind": "water_color"},
+                    "stroke": "none",
+                    "clip": true
+                },
+                {
+                    "shape": "polygon",
+                    "points": [[0, 0.15], [1, 0.15], [0.92, 1], [0.08, 1]],
+                    "fill": "none",
+                    "stroke": "#6B5B3A",
+                    "stroke_width": 1.5
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.10,
+                    "anchor": "middle",
+                    "value": {"bind": "label"},
+                    "font_size": 12, "font_weight": 600, "fill": "#1E293B"
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.95,
+                    "anchor": "middle",
+                    "value": {"expr": "fill_value", "format": "%.1f m³"},
+                    "font_size": 11, "fill": "#1E293B"
+                }
+            ]
+        },
+
+        {
+            "id": "receiving_1",
+            "block": "fixed_head (1)",
+            "label": "Receiving Water",
+            "x": 70, "y": 400, "width": 280, "height": 70,
+            "draw": [
+                {
+                    "shape": "rect",
+                    "x": 0, "y": 0, "w": 1, "h": 1,
+                    "fill": "#2563EB",
+                    "stroke": "#1E40AF",
+                    "stroke_width": 1.5,
+                    "rx": 4
+                },
+                {
+                    "shape": "text",
+                    "x": 0.5, "y": 0.55,
+                    "anchor": "middle",
+                    "value": {"bind": "label"},
+                    "font_size": 11, "font_weight": 600, "fill": "#FFFFFF"
+                }
+            ]
+        }
+
+    ],
+
+    "connectors": [
+
+        {
+            "link": "Catchment (1) - Pond (1)",
+            "attach": "auto",
+            "bind": {
+                "flow_value": { "link": "Catchment (1) - Pond (1)", "property": "flow" }
+            },
+            "draw": [
+                { "shape": "line", "stroke": "#3B82F6", "stroke_width": 2 },
+                { "shape": "text", "value": {"expr": "flow_value", "format": "%.2f m³/d"}, "font_size": 9, "fill": "#475569" }
+            ]
+        },
+
+        {
+            "link": "Pond (1) - fixed_head (1)",
+            "attach": "auto",
+            "bind": {
+                "flow_value": { "link": "Pond (1) - fixed_head (1)", "property": "flow" }
+            },
+            "draw": [
+                { "shape": "line", "stroke": "#EF4444", "stroke_width": 2 },
+                { "shape": "text", "value": {"expr": "flow_value", "format": "%.2f m³/d"}, "font_size": 9, "fill": "#475569" }
+            ]
+        }
+
+    ]
+}

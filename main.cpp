@@ -1,9 +1,16 @@
 /*
  * OpenHydroQual Digital Twin — generic OHQ model runner
  *
+ * Each invocation targets one self-contained deployment directory:
+ *
+ *   OHTwin --deployment /path/to/deployments/Bioretention
+ *
+ * The deployment directory holds config.json, the .ohq model file, the
+ * visualization spec, and the runtime state/outputs/snapshots folders.
+ *
  * main.cpp is intentionally thin:
- *   - Ensure config.json is available next to the binary
- *   - Load config
+ *   - Parse command-line arguments
+ *   - Load config from the deployment directory
  *   - Initialise runner
  *   - Fire an immediate first run, then arm QTimer for subsequent intervals
  *   - (Future) Start Crow HTTP API
@@ -11,12 +18,10 @@
 
 #include "DTConfig.h"
 #include "DTRunner.h"
-#include "RuntimeFiles.h"
-#include "System.h"
 
+#include <QCommandLineOption>
+#include <QCommandLineParser>
 #include <QCoreApplication>
-#include <QDir>
-#include <QStringList>
 #include <QTimer>
 
 #include <algorithm>
@@ -26,34 +31,42 @@
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
+    QCoreApplication::setApplicationName("OHTwin");
+    QCoreApplication::setApplicationVersion("1.0");
 
     // ------------------------------------------------------------------
-    // 1. Ensure config.json is available next to the binary
+    // 1. Parse command-line arguments
     // ------------------------------------------------------------------
-    // With DESTDIR = build-qmake-<host>/bin, ../../ points back to the
-    // project root. The runtime/config folders are optional extra locations.
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QString projectRoot = QDir(appDir).absoluteFilePath("../../");
+    QCommandLineParser parser;
+    parser.setApplicationDescription(
+        "OpenHydroQual Digital Twin — runs one deployment");
+    parser.addHelpOption();
+    parser.addVersionOption();
 
-    QStringList runtimeSearchDirs;
-    runtimeSearchDirs << appDir;
-    runtimeSearchDirs << projectRoot;
-    runtimeSearchDirs << QDir(projectRoot).absoluteFilePath("runtime");
-    runtimeSearchDirs << QDir(projectRoot).absoluteFilePath("config");
+    QCommandLineOption deploymentOpt(
+        QStringList() << "d" << "deployment",
+        "Path to the deployment directory containing config.json.",
+        "path");
+    parser.addOption(deploymentOpt);
 
-    if (!ensureRuntimeFile("config.json", runtimeSearchDirs))
+    parser.process(app);
+
+    if (!parser.isSet(deploymentOpt))
+    {
+        std::cerr << "[Main] --deployment <path> is required.\n"
+                  << "       Example: OHTwin --deployment "
+                     "/home/arash/Projects/DrywellDT/deployments/Bioretention\n";
         return 1;
+    }
 
-    // Visualization files are now model-specific and selected by config.json
-    // through "viz_file" (e.g. ${project_root}/viz_drywell.json). The legacy
-    // appDir/viz.json fallback still exists inside DTConfig for older configs.
+    const QString deploymentRoot = parser.value(deploymentOpt);
 
     // ------------------------------------------------------------------
-    // 2. Load config.json from next to the binary
+    // 2. Load the deployment's config.json
     // ------------------------------------------------------------------
     DTConfig config;
     QString configError;
-    if (!config.load(configError))
+    if (!config.load(deploymentRoot, configError))
     {
         std::cerr << "[Main] Failed to load config: "
                   << configError.toStdString() << "\n";
@@ -100,15 +113,18 @@ int main(int argc, char *argv[])
                      &runner, [&runner]() {
                          if (!runner.runOnce())
                          {
-                             std::cerr << "[Main] Periodic run failed. Continuing to next interval.\n";
+                             std::cerr << "[Main] Periodic run failed. "
+                                          "Continuing to next interval.\n";
                              // Non-fatal: log and wait for the next tick.
                          }
                      });
 
     intervalTimer.start();
 
-    std::cout << "[Main] OHQ Digital Twin running. Interval: "
-              << config.intervalStr << "  (" << config.intervalMs << " ms)\n"
+    std::cout << "[Main] OHQ Digital Twin running. Deployment: "
+              << config.deploymentName
+              << "  Interval: " << config.intervalStr
+              << "  (" << config.intervalMs << " ms)\n"
               << "[Main] Press Ctrl+C to stop.\n";
 
     // ------------------------------------------------------------------

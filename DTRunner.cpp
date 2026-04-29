@@ -623,61 +623,34 @@ QJsonObject DTRunner::patchSimulationWindow(const QJsonObject &state,
 // and returns a CPrecipitation object with bins in OHQ day-serial units.
 // NOAA returns mm; bins outside the interval window are excluded.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// fetchPrecipitation
+// Fetches Open-Meteo precipitation for [intervalStart, intervalEnd] and
+// returns a CPrecipitation object with bins in OHQ day-serial units.
+// ---------------------------------------------------------------------------
 CPrecipitation DTRunner::fetchPrecipitation(const QDateTime &intervalStart,
                                             const QDateTime &intervalEnd)
 {
-    CPrecipitation precip;
-
     NOAAWeatherFetcher fetcher;
 
-    if (m_config.weatherSource == "openmeteo") {
-        CPrecipitation precip = fetcher.getOpenMeteoPrecipitation(
-            m_config.latitude, m_config.longitude,
-            intervalStart, intervalEnd);
-        if (precip.n == 0)
-            std::cerr << "[Runner] Warning: " << fetcher.lastError().toStdString() << "\n";
-        return precip;
-    }
-
-    // NOAA path
-    const QVector<WeatherData> raw = fetcher.getWeatherPrediction(
-        QString::fromStdString(m_config.noaaOffice),
-        m_config.noaaGridX, m_config.noaaGridY,
-        datatype::PrecipitationAmount);
-
-    if (raw.isEmpty()) {
-        std::cerr << "[Runner] Warning: no precipitation data returned from NOAA\n";
-        return precip;
-    }
-
-    int skipped = 0;
-    for (const WeatherData &wd : raw)
+    if (m_config.weatherSource != "openmeteo")
     {
-        // Only include bins that overlap with [intervalStart, intervalEnd]
-        if (wd.endTime <= intervalStart || wd.startTime >= intervalEnd) {
-            ++skipped;
-            continue;
-        }
-
-        // Clamp bin edges to the interval window
-        const QDateTime binStart = qMax(wd.startTime, intervalStart);
-        const QDateTime binEnd   = qMin(wd.endTime,   intervalEnd);
-
-        const double s = toOHQDaySerial(binStart);
-        const double e = toOHQDaySerial(binEnd);
-
-        // NOAA quantitativePrecipitation is total mm over the bin duration.
-        // CPrecipitation stores intensity * bin_width = total depth,
-        // so i = value (mm) directly — getval() divides by (e-s) internally.
-        precip.append(s, e, wd.value/1000.0);
+        std::cerr << "[Runner] Warning: weather_source '"
+                  << m_config.weatherSource
+                  << "' not supported; only 'openmeteo' is available.\n";
+        return CPrecipitation();
     }
 
-    std::cout << "[Runner] Precipitation bins loaded: " << precip.n
-              << " (skipped " << skipped << " outside window)\n";
+    CPrecipitation precip = fetcher.getOpenMeteoPrecipitation(
+        m_config.latitude, m_config.longitude,
+        intervalStart, intervalEnd);
+
+    if (precip.n == 0)
+        std::cerr << "[Runner] Warning: "
+                  << fetcher.lastError().toStdString() << "\n";
 
     return precip;
 }
-
 // ---------------------------------------------------------------------------
 // injectPrecipitation  (placeholder)
 // ---------------------------------------------------------------------------
