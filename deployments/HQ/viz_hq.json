@@ -1,0 +1,75 @@
+{
+  "canvas": { "x": 0, "y": 0, "width": 900, "height": 700 },
+
+  "components": [
+    {
+      "id": "well",
+      "label": "Drywell",
+      "block": "Well",
+      "x": 420,
+      "y": 60,
+      "width": 80,
+      "height": 200,
+      "fill_max": 50,
+      "bind": {
+        "fill_value": { "block": "Well", "property": "Storage" }
+      },
+      "draw": [
+        { "shape": "rect", "x": 0, "y": 0, "w": 1, "h": 1,
+          "fill": "#EFF6FF", "stroke": "#1E293B", "stroke_width": 1.5 }
+      ]
+    },
+
+    {
+      "id": "groundwater",
+      "label": "Ground Water",
+      "block": "Ground Water",
+      "x": 100,
+      "y": 650,
+      "width": 700,
+      "height": 40,
+      "fill_max": 100000,
+      "bind": {
+        "fill_value": { "block": "Ground Water", "property": "Storage" }
+      },
+      "draw": [
+        { "shape": "rect", "x": 0, "y": 0, "w": 1, "h": 1,
+          "fill": "#CBD5E1", "stroke": "#475569", "stroke_width": 1.5 }
+      ]
+    }
+  ],
+
+  "repeat_components": [
+    {
+      "counters": {
+        "i": { "range": [0, 12] },
+        "j": { "range": [0, 12] }
+      },
+      "template": {
+        "id": "soil_${i}_${j}",
+        "label": "soil ${i},${j}",
+        "block": "Soil (${i}$${j})",
+        "x": { "counter": "i", "range": [150, 750] },
+        "y": { "counter": "j", "range": [250, 620] },
+        "width": 30,
+        "height": 20,
+        "fill_max": 1,
+        "bind": {
+          "fill_value": {
+            "block": "Soil (${i}$${j})",
+            "property": "theta"
+          }
+        },
+        "draw": [
+          {
+            "shape": "rect",
+            "x": 0, "y": 0, "w": 1, "h": 1,
+            "fill": { "bind": "water_color" },
+            "stroke": "#64748B",
+            "stroke_width": 0.3
+          }
+        ]
+      }
+    }
+  ]
+}
