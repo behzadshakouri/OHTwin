@@ -92,7 +92,7 @@ static constexpr const char *kDefaultCsvUrl =
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
-    setWindowTitle("DrywellDT Viewer");
+    setWindowTitle("OHTwin Viewer");
 
     m_url = QUrl(QString::fromLatin1(kDefaultCsvUrl));
 
@@ -102,7 +102,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     root->setSpacing(14);
 
     // ---- page header ----
-    auto *title = new QLabel("DrywellDT Viewer");
+    auto *title = new QLabel("OHTwin Viewer");
     title->setObjectName("HeaderTitle");
     auto *subtitle = new QLabel("Observed outputs — live from the OpenHydroQual Digital Twin");
     subtitle->setObjectName("HeaderSubtitle");
