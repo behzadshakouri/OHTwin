@@ -167,6 +167,90 @@ bool DTRunner::init(QString &errorMessage)
 }
 
 // ---------------------------------------------------------------------------
+// renderOnly
+// Regenerates SVG files without running OHQ, fetching weather, updating state
+// snapshots, or touching the selected-output stream.
+//
+// Preferred path:
+//   outputs/viz_state.json          + deployment viz_*.json -> outputs/viz.svg
+//   outputs/forecast_viz_state.json + deployment viz_*.json -> outputs/forecast_viz.svg
+//
+// Static fallback:
+//   If a viz-state JSON file does not exist (or is empty/invalid), render from
+//   an empty QJsonObject. This lets a deployment produce a static layout SVG
+//   directly from config.json + viz_*.json before any simulation has run.
+// ---------------------------------------------------------------------------
+bool DTRunner::renderOnly()
+{
+    const QString vizJsonPath = QString::fromStdString(m_config.vizFile);
+    const QString outputDir   = QString::fromStdString(m_config.outputDir);
+
+    QDir().mkpath(outputDir);
+
+    const QFileInfo vizInfo(vizJsonPath);
+    if (!vizInfo.exists() || !vizInfo.isFile())
+    {
+        std::cerr << "[Runner] render-only: viz spec not found: "
+                  << vizJsonPath.toStdString() << "\n";
+        return false;
+    }
+
+    bool okAny = false;
+
+    auto renderOne = [&](const QString &statePath,
+                         const QString &svgPath,
+                         const char *label) -> bool
+    {
+        QJsonObject fullState;
+        const QFileInfo stateInfo(statePath);
+
+        if (stateInfo.exists() && stateInfo.isFile())
+        {
+            fullState = readJson(statePath);
+            if (fullState.isEmpty())
+            {
+                std::cout << "[Runner] render-only: " << label
+                          << " state is empty/invalid; rendering static layout from "
+                          << vizJsonPath.toStdString() << "\n";
+            }
+            else
+            {
+                std::cout << "[Runner] render-only: using "
+                          << statePath.toStdString() << "\n";
+            }
+        }
+        else
+        {
+            std::cout << "[Runner] render-only: " << label
+                      << " state not found; rendering static layout from "
+                      << vizJsonPath.toStdString() << "\n";
+        }
+
+        QString err;
+        if (!VizRenderer::render(vizJsonPath, fullState, svgPath, err))
+        {
+            std::cerr << "[Runner] render-only " << label << " warning: "
+                      << err.toStdString() << "\n";
+            return false;
+        }
+
+        std::cout << "[Runner] render-only wrote: "
+                  << svgPath.toStdString() << "\n";
+        return true;
+    };
+
+    okAny = renderOne(outputDir + "/viz_state.json",
+                      outputDir + "/viz.svg",
+                      "advance") || okAny;
+
+    okAny = renderOne(outputDir + "/forecast_viz_state.json",
+                      outputDir + "/forecast_viz.svg",
+                      "forecast") || okAny;
+
+    return okAny;
+}
+
+// ---------------------------------------------------------------------------
 // runOnce  (orchestrator: Advance, then optional Forecast)
 // ---------------------------------------------------------------------------
 bool DTRunner::runOnce()

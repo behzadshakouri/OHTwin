@@ -90,6 +90,13 @@ public slots:
     // ---------------------------------------------------------------------------
     bool runOnce();
 
+    // Render-only utility: regenerate viz.svg and forecast_viz.svg without
+    // running OHQ, fetching weather, advancing state, or modifying selected
+    // outputs. If existing viz_state JSON files are present, they are used;
+    // otherwise a static/default SVG is rendered directly from the deployment
+    // viz_*.json layout.
+    bool renderOnly();
+
 private:
     // -----------------------------------------------------------------------
     // Internal helpers

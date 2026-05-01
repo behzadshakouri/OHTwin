@@ -49,6 +49,11 @@ int main(int argc, char *argv[])
         "path");
     parser.addOption(deploymentOpt);
 
+    QCommandLineOption renderOnlyOpt(
+        QStringList() << "render-only",
+        "Skip simulation and regenerate viz.svg / forecast_viz.svg from existing viz_state JSON files, or static SVGs from the deployment viz spec if state JSON is missing.");
+    parser.addOption(renderOnlyOpt);
+
     parser.process(app);
 
     if (!parser.isSet(deploymentOpt))
@@ -74,9 +79,19 @@ int main(int argc, char *argv[])
     }
 
     // ------------------------------------------------------------------
-    // 3. Initialise runner
+    // 3. Construct runner. In render-only mode, do not initialise the
+    //    simulation loop, assimilation, timing state, or any OHQ state.
+    //    Rendering only needs the deployment-resolved viz file and the
+    //    existing outputs/*viz_state.json files when present; otherwise it falls back to the static deployment viz layout.
     // ------------------------------------------------------------------
     DTRunner runner(config);
+
+    if (parser.isSet(renderOnlyOpt))
+    {
+        const bool ok = runner.renderOnly();
+        return ok ? 0 : 4;
+    }
+
     QString initError;
     if (!runner.init(initError))
     {
