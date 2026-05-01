@@ -2,45 +2,23 @@
   "canvas": {
     "x": 0,
     "y": 0,
-    "width": 960,
-    "height": 660
+    "width": 1180,
+    "height": 900
   },
   "components": [
-    {
-      "id": "title",
-      "label": "R / Bioswale Digital Twin",
-      "x": 20,
-      "y": 12,
-      "width": 260,
-      "height": 26,
-      "draw": [
-        {
-          "shape": "text",
-          "x": 0.5,
-          "y": 0.55,
-          "anchor": "middle",
-          "value": {
-            "bind": "label"
-          },
-          "font_size": 15,
-          "font_weight": 800,
-          "fill": "#0F172A"
-        }
-      ]
-    },
     {
       "id": "catchment",
       "label": "Catchment",
       "block": "Catchment (1)",
-      "x": 370,
-      "y": 45,
-      "width": 130,
-      "height": 52,
+      "x": 515,
+      "y": 20,
+      "width": 120,
+      "height": 55,
       "fill_max": 10,
       "bind": {
         "fill_value": {
           "block": "Catchment (1)",
-          "property": "Storage"
+          "property": "depth"
         }
       },
       "thresholds": [
@@ -72,90 +50,14 @@
         {
           "shape": "text",
           "x": 0.5,
-          "y": 0.42,
+          "y": 0.55,
           "anchor": "middle",
           "value": {
             "bind": "label"
           },
           "font_size": 10,
-          "font_weight": 800,
+          "font_weight": 700,
           "fill": "#075985"
-        },
-        {
-          "shape": "text",
-          "x": 0.5,
-          "y": 0.72,
-          "anchor": "middle",
-          "value": "rainfall / runoff",
-          "font_size": 8,
-          "font_weight": 500,
-          "fill": "#0F172A"
-        }
-      ]
-    },
-    {
-      "id": "engineered_label",
-      "label": "Engineered soil / media",
-      "x": 300,
-      "y": 113,
-      "width": 260,
-      "height": 22,
-      "draw": [
-        {
-          "shape": "text",
-          "x": 0.5,
-          "y": 0.55,
-          "anchor": "middle",
-          "value": {
-            "bind": "label"
-          },
-          "font_size": 11,
-          "font_weight": 800,
-          "fill": "#334155"
-        }
-      ]
-    },
-    {
-      "id": "left_label",
-      "label": "Left native soil",
-      "x": 45,
-      "y": 185,
-      "width": 150,
-      "height": 22,
-      "draw": [
-        {
-          "shape": "text",
-          "x": 0.5,
-          "y": 0.55,
-          "anchor": "middle",
-          "value": {
-            "bind": "label"
-          },
-          "font_size": 10,
-          "font_weight": 700,
-          "fill": "#334155"
-        }
-      ]
-    },
-    {
-      "id": "right_label",
-      "label": "Right native soil",
-      "x": 760,
-      "y": 185,
-      "width": 150,
-      "height": 22,
-      "draw": [
-        {
-          "shape": "text",
-          "x": 0.5,
-          "y": 0.55,
-          "anchor": "middle",
-          "value": {
-            "bind": "label"
-          },
-          "font_size": 10,
-          "font_weight": 700,
-          "fill": "#334155"
         }
       ]
     },
@@ -163,9 +65,9 @@
       "id": "gw",
       "label": "GW",
       "block": "GW",
-      "x": 70,
-      "y": 600,
-      "width": 820,
+      "x": 90,
+      "y": 840,
+      "width": 1000,
       "height": 38,
       "fill_max": 100000,
       "bind": {
@@ -189,22 +91,24 @@
         {
           "shape": "text",
           "x": 0.5,
-          "y": 0.58,
+          "y": 0.6,
           "anchor": "middle",
-          "value": "Groundwater / GW",
+          "value": {
+            "bind": "label"
+          },
           "font_size": 12,
-          "font_weight": 800,
+          "font_weight": 700,
           "fill": "#1E293B"
         }
       ]
     },
     {
-      "id": "theta_legend_dry",
-      "label": "dry",
-      "x": 735,
-      "y": 18,
-      "width": 45,
-      "height": 18,
+      "id": "legend_engineered",
+      "label": "Engineered soil column",
+      "x": 475,
+      "y": 90,
+      "width": 150,
+      "height": 28,
       "draw": [
         {
           "shape": "rect",
@@ -212,30 +116,32 @@
           "y": 0,
           "w": 1,
           "h": 1,
-          "rx": 2,
-          "fill": "#FEF3C7",
-          "stroke": "#CBD5E1",
-          "stroke_width": 0.6
+          "rx": 7,
+          "fill": "#ECFDF5",
+          "stroke": "#059669",
+          "stroke_width": 1.4
         },
         {
           "shape": "text",
           "x": 0.5,
-          "y": 0.62,
+          "y": 0.55,
           "anchor": "middle",
-          "value": "dry",
-          "font_size": 8,
-          "font_weight": 600,
-          "fill": "#0F172A"
+          "value": {
+            "bind": "label"
+          },
+          "font_size": 10,
+          "font_weight": 700,
+          "fill": "#064E3B"
         }
       ]
     },
     {
-      "id": "theta_legend_mid",
-      "label": "moist",
-      "x": 785,
-      "y": 18,
-      "width": 45,
-      "height": 18,
+      "id": "legend_subbase",
+      "label": "Aggregate subbase",
+      "x": 650,
+      "y": 90,
+      "width": 160,
+      "height": 28,
       "draw": [
         {
           "shape": "rect",
@@ -243,30 +149,32 @@
           "y": 0,
           "w": 1,
           "h": 1,
-          "rx": 2,
-          "fill": "#60A5FA",
-          "stroke": "#CBD5E1",
-          "stroke_width": 0.6
+          "rx": 7,
+          "fill": "#F1F5F9",
+          "stroke": "#64748B",
+          "stroke_width": 1.4
         },
         {
           "shape": "text",
           "x": 0.5,
-          "y": 0.62,
+          "y": 0.55,
           "anchor": "middle",
-          "value": "moist",
-          "font_size": 8,
-          "font_weight": 600,
-          "fill": "#FFFFFF"
+          "value": {
+            "bind": "label"
+          },
+          "font_size": 10,
+          "font_weight": 700,
+          "fill": "#334155"
         }
       ]
     },
     {
-      "id": "theta_legend_wet",
-      "label": "wet",
-      "x": 835,
-      "y": 18,
-      "width": 45,
-      "height": 18,
+      "id": "legend_native",
+      "label": "Native soil domain",
+      "x": 190,
+      "y": 90,
+      "width": 180,
+      "height": 28,
       "draw": [
         {
           "shape": "rect",
@@ -274,20 +182,22 @@
           "y": 0,
           "w": 1,
           "h": 1,
-          "rx": 2,
-          "fill": "#1E40AF",
-          "stroke": "#CBD5E1",
-          "stroke_width": 0.6
+          "rx": 7,
+          "fill": "#FFF7ED",
+          "stroke": "#EA580C",
+          "stroke_width": 1.4
         },
         {
           "shape": "text",
           "x": 0.5,
-          "y": 0.62,
+          "y": 0.55,
           "anchor": "middle",
-          "value": "wet",
-          "font_size": 8,
-          "font_weight": 600,
-          "fill": "#FFFFFF"
+          "value": {
+            "bind": "label"
+          },
+          "font_size": 10,
+          "font_weight": 700,
+          "fill": "#7C2D12"
         }
       ]
     }
@@ -295,168 +205,32 @@
   "repeat_components": [
     {
       "counters": {
-        "k": {
-          "range": [
-            1,
-            8
-          ]
-        }
-      },
-      "template": {
-        "id": "eng_${k}",
-        "type": "engineered_soil",
-        "label": "ES ${k}",
-        "block": "EngineeredSoil (${k})",
-        "x": {
-          "counter": "k",
-          "range": [
-            310,
-            550
-          ]
-        },
-        "y": 138,
-        "width": 28,
-        "height": 42,
-        "fill_max": 1,
-        "bind": {
-          "fill_value": {
-            "block": "EngineeredSoil (${k})",
-            "property": "theta"
-          }
-        },
-        "thresholds": [
-          {
-            "below": 0.15,
-            "color": "#FEF3C7"
-          },
-          {
-            "below": 0.3,
-            "color": "#60A5FA"
-          },
-          {
-            "above": 0.3,
-            "color": "#1E40AF"
-          }
-        ],
-        "draw": [
-          {
-            "shape": "rect",
-            "x": 0,
-            "y": 0,
-            "w": 1,
-            "h": 1,
-            "rx": 2,
-            "fill": {
-              "bind": "water_color"
-            },
-            "stroke": "#64748B",
-            "stroke_width": 0.35
-          }
-        ]
-      }
-    },
-    {
-      "counters": {
-        "k": {
-          "range": [
-            1,
-            10
-          ]
-        }
-      },
-      "template": {
-        "id": "subbase_${k}",
-        "type": "subbase",
-        "label": "SB ${k}",
-        "block": "Subbase (${k})",
-        "x": {
-          "counter": "k",
-          "range": [
-            280,
-            585
-          ]
-        },
-        "y": 190,
-        "width": 28,
-        "height": 22,
-        "fill_max": 1,
-        "bind": {
-          "fill_value": {
-            "block": "Subbase (${k})",
-            "property": "theta"
-          }
-        },
-        "thresholds": [
-          {
-            "below": 0.15,
-            "color": "#FEF3C7"
-          },
-          {
-            "below": 0.3,
-            "color": "#60A5FA"
-          },
-          {
-            "above": 0.3,
-            "color": "#1E40AF"
-          }
-        ],
-        "draw": [
-          {
-            "shape": "rect",
-            "x": 0,
-            "y": 0,
-            "w": 1,
-            "h": 1,
-            "rx": 2,
-            "fill": {
-              "bind": "water_color"
-            },
-            "stroke": "#64748B",
-            "stroke_width": 0.35
-          }
-        ]
-      }
-    },
-    {
-      "counters": {
-        "i": {
-          "range": [
-            1,
-            8
-          ]
-        },
         "j": {
           "range": [
             1,
-            6
+            8
           ]
         }
       },
       "template": {
-        "id": "lefttop_${i}_${j}",
-        "type": "left_top",
-        "label": "LT ${i},${j}",
-        "block": "LeftTop (${i}$${j})",
-        "x": {
-          "counter": "i",
-          "range": [
-            95,
-            270
-          ]
-        },
+        "id": "eng_${j}",
+        "type": "engineered_soil",
+        "label": "ES ${j}",
+        "block": "EngineeredSoil (${j})",
+        "x": 520,
         "y": {
           "counter": "j",
           "range": [
-            220,
-            370
+            135,
+            280
           ]
         },
-        "width": 20,
-        "height": 18,
+        "width": 80,
+        "height": 15,
         "fill_max": 1,
         "bind": {
           "fill_value": {
-            "block": "LeftTop (${i}$${j})",
+            "block": "EngineeredSoil (${j})",
             "property": "theta"
           }
         },
@@ -467,11 +241,73 @@
           },
           {
             "below": 0.3,
-            "color": "#60A5FA"
+            "color": "#93C5FD"
           },
           {
             "above": 0.3,
-            "color": "#1E40AF"
+            "color": "#1D4ED8"
+          }
+        ],
+        "draw": [
+          {
+            "shape": "rect",
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1,
+            "rx": 1,
+            "fill": {
+              "bind": "water_color"
+            },
+            "stroke": "#64748B",
+            "stroke_width": 0.35
+          }
+        ]
+      }
+    },
+    {
+      "counters": {
+        "j": {
+          "range": [
+            9,
+            31
+          ]
+        }
+      },
+      "template": {
+        "id": "ueng_${j}",
+        "type": "engineered_soil_deep",
+        "label": "UES ${j}",
+        "block": "UEngineered (${j})",
+        "x": 520,
+        "y": {
+          "counter": "j",
+          "range": [
+            305,
+            790
+          ]
+        },
+        "width": 80,
+        "height": 13,
+        "fill_max": 1,
+        "bind": {
+          "fill_value": {
+            "block": "UEngineered (${j})",
+            "property": "theta"
+          }
+        },
+        "thresholds": [
+          {
+            "below": 0.15,
+            "color": "#FEF3C7"
+          },
+          {
+            "below": 0.3,
+            "color": "#93C5FD"
+          },
+          {
+            "above": 0.3,
+            "color": "#1D4ED8"
           }
         ],
         "draw": [
@@ -494,12 +330,146 @@
     {
       "counters": {
         "i": {
+          "range": [
+            1,
+            10
+          ]
+        }
+      },
+      "template": {
+        "id": "subbase_${i}",
+        "type": "subbase",
+        "label": "Sub ${i}",
+        "block": "Subbase (${i})",
+        "x": {
+          "counter": "i",
+          "range": [
+            640,
+            930
+          ]
+        },
+        "y": 160,
+        "width": 28,
+        "height": 35,
+        "fill_max": 1,
+        "bind": {
+          "fill_value": {
+            "block": "Subbase (${i})",
+            "property": "Storage"
+          }
+        },
+        "thresholds": [
+          {
+            "below": 0.4,
+            "color": "#BFDBFE"
+          },
+          {
+            "below": 0.8,
+            "color": "#3B82F6"
+          },
+          {
+            "above": 0.8,
+            "color": "#1D4ED8"
+          }
+        ],
+        "draw": [
+          {
+            "shape": "rect",
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1,
+            "rx": 2,
+            "fill": "#E2E8F0",
+            "stroke": "#475569",
+            "stroke_width": 0.35
+          }
+        ]
+      }
+    },
+    {
+      "counters": {
+        "r": {
+          "range": [
+            1,
+            8
+          ]
+        },
+        "c": {
+          "range": [
+            1,
+            6
+          ]
+        }
+      },
+      "template": {
+        "id": "lefttop_${r}_${c}",
+        "type": "left_top_soil",
+        "label": "LT ${r},${c}",
+        "block": "LeftTop (${r}$${c})",
+        "x": {
+          "counter": "c",
+          "range": [
+            245,
+            425
+          ]
+        },
+        "y": {
+          "counter": "r",
+          "range": [
+            135,
+            280
+          ]
+        },
+        "width": 26,
+        "height": 15,
+        "fill_max": 1,
+        "bind": {
+          "fill_value": {
+            "block": "LeftTop (${r}$${c})",
+            "property": "theta"
+          }
+        },
+        "thresholds": [
+          {
+            "below": 0.15,
+            "color": "#FEF3C7"
+          },
+          {
+            "below": 0.3,
+            "color": "#93C5FD"
+          },
+          {
+            "above": 0.3,
+            "color": "#1D4ED8"
+          }
+        ],
+        "draw": [
+          {
+            "shape": "rect",
+            "x": 0,
+            "y": 0,
+            "w": 1,
+            "h": 1,
+            "rx": 1,
+            "fill": {
+              "bind": "water_color"
+            },
+            "stroke": "#64748B",
+            "stroke_width": 0.25
+          }
+        ]
+      }
+    },
+    {
+      "counters": {
+        "r": {
           "range": [
             2,
             8
           ]
         },
-        "j": {
+        "c": {
           "range": [
             1,
             10
@@ -507,30 +477,30 @@
         }
       },
       "template": {
-        "id": "righttop_${i}_${j}",
-        "type": "right_top",
-        "label": "RT ${i},${j}",
-        "block": "RightTop (${i}$${j})",
+        "id": "righttop_${r}_${c}",
+        "type": "right_top_soil",
+        "label": "RT ${r},${c}",
+        "block": "RightTop (${r}$${c})",
         "x": {
-          "counter": "i",
+          "counter": "c",
           "range": [
-            610,
-            800
+            660,
+            1010
           ]
         },
         "y": {
-          "counter": "j",
+          "counter": "r",
           "range": [
-            220,
-            470
+            150,
+            280
           ]
         },
-        "width": 22,
-        "height": 18,
+        "width": 26,
+        "height": 15,
         "fill_max": 1,
         "bind": {
           "fill_value": {
-            "block": "RightTop (${i}$${j})",
+            "block": "RightTop (${r}$${c})",
             "property": "theta"
           }
         },
@@ -541,11 +511,11 @@
           },
           {
             "below": 0.3,
-            "color": "#60A5FA"
+            "color": "#93C5FD"
           },
           {
             "above": 0.3,
-            "color": "#1E40AF"
+            "color": "#1D4ED8"
           }
         ],
         "draw": [
@@ -560,20 +530,20 @@
               "bind": "water_color"
             },
             "stroke": "#64748B",
-            "stroke_width": 0.3
+            "stroke_width": 0.25
           }
         ]
       }
     },
     {
       "counters": {
-        "i": {
+        "r": {
           "range": [
             9,
             31
           ]
         },
-        "j": {
+        "c": {
           "range": [
             1,
             6
@@ -581,30 +551,30 @@
         }
       },
       "template": {
-        "id": "leftbottom_${i}_${j}",
-        "type": "left_bottom",
-        "label": "LB ${i},${j}",
-        "block": "LeftBottom (${i}$${j})",
+        "id": "leftbottom_${r}_${c}",
+        "type": "left_bottom_soil",
+        "label": "LB ${r},${c}",
+        "block": "LeftBottom (${r}$${c})",
         "x": {
-          "counter": "i",
+          "counter": "c",
           "range": [
-            95,
-            430
+            245,
+            425
           ]
         },
         "y": {
-          "counter": "j",
+          "counter": "r",
           "range": [
-            405,
-            555
+            305,
+            790
           ]
         },
-        "width": 13,
-        "height": 18,
+        "width": 26,
+        "height": 13,
         "fill_max": 1,
         "bind": {
           "fill_value": {
-            "block": "LeftBottom (${i}$${j})",
+            "block": "LeftBottom (${r}$${c})",
             "property": "theta"
           }
         },
@@ -615,11 +585,11 @@
           },
           {
             "below": 0.3,
-            "color": "#60A5FA"
+            "color": "#93C5FD"
           },
           {
             "above": 0.3,
-            "color": "#1E40AF"
+            "color": "#1D4ED8"
           }
         ],
         "draw": [
@@ -634,20 +604,20 @@
               "bind": "water_color"
             },
             "stroke": "#64748B",
-            "stroke_width": 0.25
+            "stroke_width": 0.22
           }
         ]
       }
     },
     {
       "counters": {
-        "i": {
+        "r": {
           "range": [
             9,
             31
           ]
         },
-        "j": {
+        "c": {
           "range": [
             1,
             10
@@ -655,30 +625,30 @@
         }
       },
       "template": {
-        "id": "rightbottom_${i}_${j}",
-        "type": "right_bottom",
-        "label": "RB ${i},${j}",
-        "block": "RightBottom (${i}$${j})",
+        "id": "rightbottom_${r}_${c}",
+        "type": "right_bottom_soil",
+        "label": "RB ${r},${c}",
+        "block": "RightBottom (${r}$${c})",
         "x": {
-          "counter": "i",
+          "counter": "c",
           "range": [
-            505,
-            840
+            660,
+            1010
           ]
         },
         "y": {
-          "counter": "j",
+          "counter": "r",
           "range": [
-            405,
-            575
+            305,
+            790
           ]
         },
-        "width": 13,
+        "width": 26,
         "height": 13,
         "fill_max": 1,
         "bind": {
           "fill_value": {
-            "block": "RightBottom (${i}$${j})",
+            "block": "RightBottom (${r}$${c})",
             "property": "theta"
           }
         },
@@ -689,11 +659,11 @@
           },
           {
             "below": 0.3,
-            "color": "#60A5FA"
+            "color": "#93C5FD"
           },
           {
             "above": 0.3,
-            "color": "#1E40AF"
+            "color": "#1D4ED8"
           }
         ],
         "draw": [
@@ -708,7 +678,7 @@
               "bind": "water_color"
             },
             "stroke": "#64748B",
-            "stroke_width": 0.25
+            "stroke_width": 0.22
           }
         ]
       }
@@ -730,7 +700,7 @@
     },
     {
       "link": "EngineeredSoil-Subbase",
-      "from": "EngineeredSoil (8)",
+      "from": "EngineeredSoil (1)",
       "to": "Subbase (1)",
       "attach": "auto",
       "style": "arrow",
@@ -743,7 +713,7 @@
     },
     {
       "link": "UEngineered - GW",
-      "from": "Subbase (10)",
+      "from": "UEngineered (31)",
       "to": "GW",
       "attach": "auto",
       "style": "line",
@@ -758,53 +728,7 @@
   "repeat_connectors": [
     {
       "counters": {
-        "k": {
-          "range": [
-            1,
-            7
-          ]
-        }
-      },
-      "template": {
-        "link": "EngineeredSoil_V (${k})",
-        "from": "EngineeredSoil (${k})",
-        "to": "Subbase (${k})",
-        "attach": "auto",
-        "style": "line",
-        "bind": {
-          "flow_value": {
-            "link": "EngineeredSoil_V (${k})",
-            "property": "flow"
-          }
-        }
-      }
-    },
-    {
-      "counters": {
-        "j": {
-          "range": [
-            1,
-            6
-          ]
-        }
-      },
-      "template": {
-        "link": "LeftBottom - GW (${j})",
-        "from": "LeftBottom (31$${j})",
-        "to": "GW",
-        "attach": "auto",
-        "style": "line",
-        "bind": {
-          "flow_value": {
-            "link": "LeftBottom - GW (${j})",
-            "property": "flow"
-          }
-        }
-      }
-    },
-    {
-      "counters": {
-        "j": {
+        "i": {
           "range": [
             1,
             10
@@ -812,14 +736,60 @@
         }
       },
       "template": {
-        "link": "RightBottom - GW (${j})",
-        "from": "RightBottom (31$${j})",
+        "link": "Subbase (${i}) - RightTop (2$${i})",
+        "from": "Subbase (${i})",
+        "to": "RightTop (2$${i})",
+        "attach": "auto",
+        "style": "line",
+        "bind": {
+          "flow_value": {
+            "link": "Subbase (${i}) - RightTop (2$${i})",
+            "property": "flow"
+          }
+        }
+      }
+    },
+    {
+      "counters": {
+        "i": {
+          "range": [
+            1,
+            6
+          ]
+        }
+      },
+      "template": {
+        "link": "LeftBottom - GW (${i})",
+        "from": "LeftBottom (31$${i})",
         "to": "GW",
         "attach": "auto",
         "style": "line",
         "bind": {
           "flow_value": {
-            "link": "RightBottom - GW (${j})",
+            "link": "LeftBottom - GW (${i})",
+            "property": "flow"
+          }
+        }
+      }
+    },
+    {
+      "counters": {
+        "i": {
+          "range": [
+            1,
+            10
+          ]
+        }
+      },
+      "template": {
+        "link": "RightBottom - GW (${i})",
+        "from": "RightBottom (31$${i})",
+        "to": "GW",
+        "attach": "auto",
+        "style": "line",
+        "bind": {
+          "flow_value": {
+            "link": "RightBottom - GW (${i})",
             "property": "flow"
           }
         }
